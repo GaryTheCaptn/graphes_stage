@@ -37,7 +37,6 @@ def p_to_b(p):
 
 def b_to_p(b):
     """
-
     :param b: liste d'entier du bilan des montées et descentes à chaque arrêt
     :return: liste d'entier du nombre de personnes transportées entre les arrêts
               p[i] = personnes transportées entre l'arrêt i et l'arrêt i+1
@@ -50,6 +49,11 @@ def b_to_p(b):
 
 # Passage de données lagrangiennes à eulériennes
 def somme_ligne(M, i):
+    """
+    :param M: Une matrice d'entiers
+    :param i: une entier correspondant à une ligne
+    :return: la somme des valeurs de toutes les coefficients de la ligne i
+    """
     res = 0
     for j in range(0, len(M)):
         res += M[i][j]
@@ -57,6 +61,11 @@ def somme_ligne(M, i):
 
 
 def somme_colonne(M, j):
+    """
+    :param M: Une matrice d'entiers
+    :param j: Un entier correspondant à une colonne
+    :return: La somme des coefficients de la colonne j
+    """
     res = 0
     for i in range(0, len(M)):
         res += M[i][j]
@@ -76,51 +85,74 @@ def lagrange_to_euler(M):
 
 # Passage de données eulériennes à données lagrangiennes
 def euler_to_lagrange(m, v):
+    """
+    :param m: une liste d'entiers, les montées à chaque arrêt
+    :param v: une liste d'entiers, les descentes à chaque arrêt
+    :return: une liste contenant toutes les matrices OD correspondant aux données de montées et de descentes
+    """
     n = len(m)
     resultats = []
 
-    def backtrack(grille, m_rest, v_rest, row, col):
-        # Si nous sommes à la dernière cellule, vérifions si la grille est valide
-        if row == n:
+    # Fonction récursive pour trouver les grilles
+    def backtrack(grille, m_rest, v_rest, ligne, col):
+        # Cas 1 : On a rempli la dernière cellule. On vérifie si la grille est valide
+        #         Si elle est valide, on la sauvegarde dans les résultats.
+        if ligne == n:
             if all(sum(grille[i]) == m[i] for i in range(n)) and all(
                     sum(grille[i][j] for i in range(n)) == v[j] for j in range(n)):
                 resultats.append([row[:] for row in grille])
             return
 
-        # Si nous avons dépassé la dernière colonne, passer à la ligne suivante
+        # Cas 2 : On a rempli la dernière colonne de la ligne actuelle. On passe à la ligne suivante
         if col == n:
-            backtrack(grille, m_rest, v_rest, row + 1, 0)
+            # On appelle la fonction backtrack pour continuer à remplir la matrice
+            # en se plaçant sur la ligne +1 et sur la première colonne
+            backtrack(grille, m_rest, v_rest, ligne + 1, 0)
             return
 
-        # Si nous sommes sur la diagonale ou dans la partie inférieure gauche, la valeur doit être 0
-        if row >= col:
-            grille[row][col] = 0
-            backtrack(grille, m_rest, v_rest, row, col + 1)
+        # Cas 3 : On est sur la diagonale ou la partie inférieure gauche, la valeur doit être 0.
+        if ligne >= col:
+            grille[ligne][col] = 0  # On met le coef à 0
+            backtrack(grille, m_rest, v_rest, ligne, col + 1)  # On continue à remplir la grille.
+
+        # Autre cas : On appelle la fonction backtrack pour chaque valeur que peut prendre la cellule
         else:
-            # Essayer chaque valeur possible pour cette cellule
-            max_val = min(m_rest[row], v_rest[col])
+            # On définit la valeur maximale que peut prendre la cellule à partir de m_rest et v_rest.
+            max_val = min(m_rest[ligne], v_rest[col])
             for val in range(max_val + 1):
-                grille[row][col] = val
-                m_rest[row] -= val
+                grille[ligne][col] = val
+                # On modifie les valeurs de m_rest et v_rest pour remplir les cellules restantes
+                # Et respecter les conditions sur les sommes de lignes et de colonnes
+                m_rest[ligne] -= val
                 v_rest[col] -= val
 
-                # Appel récursif pour la cellule suivante
-                backtrack(grille, m_rest, v_rest, row, col + 1)
+                # On appelle la fonction backtrack récursive pour remplir la cellule suivante
+                backtrack(grille, m_rest, v_rest, ligne, col + 1)
 
-                # Rétablir les valeurs originales pour essayer la prochaine possibilité
-                m_rest[row] += val
+                # On rétablie les valeurs de m_rest et v_rest pour tester la nouvelle possibilité
+                m_rest[ligne] += val
                 v_rest[col] += val
-                grille[row][col] = 0
+                grille[ligne][col] = 0
 
-    # Initialiser une grille vide
+    # On initialise une grille vide
     grille_vide = [[0] * n for _ in range(n)]
+
+    # On appelle la fonction récursive backtrack pour remplir la grille et tester les possibilités.
     backtrack(grille_vide, m.copy(), v.copy(), 0, 0)
 
     return resultats
 
 
 def print_euler_to_lagrange(m, v):
+    """
+    Affiche dans la console Python toutes les matrices OD correspondants à m et v
+    :param m: liste d'entiers des montées à chaque arrêt
+    :param v: liste d'entiers des descentes à chaque arrêt
+    """
+    # On récupère les matrices
     grilles = euler_to_lagrange(m, v)
+
+    # On les affiche
     print(str(len(grilles)) + " grilles valides trouvées")
     for i, grille in enumerate(grilles):
         print(f"Grille {i + 1} :")
@@ -131,6 +163,11 @@ def print_euler_to_lagrange(m, v):
 
 
 def minisation_entropie(grilles):
+    """
+    :param grilles: Une liste de matrices
+    :return: Une matrice qui minimise l'entropie
+    """
+
     # Définition "thermodynamique" avec une entropie positive donc on veut minimiser l'entropie
     def calcul_entropie(grille):
         sum = 0.0
@@ -146,6 +183,11 @@ def minisation_entropie(grilles):
 
 
 def euler_to_best_lagrange(m, v):
+    """
+    :param m: Une liste d'entiers des montées
+    :param v: Une liste d'entiers des descentes
+    :return: Une matrice OD qui vérifie m et v qui minimise l'entropie
+    """
     grilles = euler_to_lagrange(m, v)
     best_grille = minisation_entropie(grilles)
     return best_grille
@@ -261,7 +303,6 @@ def euler_to_graph(noms, m, v):
 
     # Initialisation du graphe
     G = nx.DiGraph()
-    plt.figure(figsize=(20, 10))
 
     # Création des arrêts comme noeuds
     arrets = noms
@@ -320,6 +361,10 @@ def euler_to_graph(noms, m, v):
 
 
 def affiche_matrice(M):
+    """
+    Affiche la matrice M dans la console Python
+    :param M:
+    """
     for ligne in M:
         print(str(ligne) + '\n')
 
@@ -335,12 +380,13 @@ noms_arrets5 = ["A1", "A2", "A3", "A4", "A5", "A6"]
 m5 = [5, 4, 6, 3, 1, 0]
 v5 = [0, 2, 4, 3, 5, 5]
 # print_euler_to_lagrange(m5, v5)
-lagrange_to_graph(noms_arrets5, euler_to_best_lagrange(m5, v5))
+# lagrange_to_graph(noms_arrets5, euler_to_best_lagrange(m5, v5))
 # affiche_matrice(minisation_entropie(euler_to_lagrange(m5, v5)))
 
 # Test sur une ligne à 5 arrêts
 noms_arrets4 = ["A1", "A2", "A3", "A4", "A5"]
 m4 = [2, 3, 1, 2, 0]
 v4 = [0, 1, 2, 2, 3]
-# print_euler_to_lagrange(m4, v4)
+print_euler_to_lagrange(m4, v4)
 # affiche_matrice(minisation_entropie(euler_to_lagrange(m4, v4)))
+euler_to_graph(noms_arrets4, m4, v4)
