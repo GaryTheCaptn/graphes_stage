@@ -3,27 +3,76 @@ import numpy as np
 from bus import somme_colonne, somme_ligne
 
 
+def affiche_matrice_propre(M):
+    """
+    Affiche la matrice M dans la console Python
+    :param M:
+    """
+    # Déterminer la largeur maximale d'un élément du tableau pour l'alignement
+    largeur_max = 5
+    for ligne in M:
+        # Joindre les éléments de la ligne avec un espace et les aligner à droite selon la largeur maximale
+        ligne_formatee = " ".join(f"{str(round(item, 3)):>{largeur_max}}" for item in ligne)
+        print(ligne_formatee)
+    print('\n')
+    return None
+
+
+def generation_matrice_numeros(n):
+    M = [[-1] * n for _ in range(n)]
+    index = 0
+    for i in range(0, n):
+        for j in range(i + 1, n):
+            M[i][j] = index
+            index += 1
+    return M
+
+
 def generation_matrice_contraintes(n):
     d = int((n - 1) * n / 2)
 
+    # Matrice numéros
+    matrice_numeros = generation_matrice_numeros(n)
+
+    # Matrice vierge pour les contraintes
     A = [[0] * d for _ in range(2 * n)]
 
-    # Contraintes de montee
-    ligne = 0
-    colonne = 0
-    compteur = n - 1
-    while compteur > 0:
-        for _ in range(compteur):
-            A[ligne][colonne] = 1
-            colonne += 1
-        ligne += 1
-        compteur += -1
+    # Contraintes de montees
+    for i in range(0, n):
 
-    # Contraintes de descente
-    ligne += 2  # Pour m[N-1] et v[0]
+        for j in range(1, n):
+            temp_index = matrice_numeros[i][j]
+            if temp_index != -1:
+                A[i][temp_index] = 1
 
-    # TODO
-    affiche_matrice_propre(A)
+    # Contraintes de descentes
+    ligne_descente = n
+    for j in range(0, n):
+        for i in range(0, n):
+            temp_index = matrice_numeros[i][j]
+            if temp_index != -1:
+                A[ligne_descente + j][temp_index] = 1
+
+    return A
+
+
+def normalisaiton_vecteurs(m, v):
+    K = sum(m)
+    normalized_m = [m_i / K for m_i in m]
+    normalized_v = [v_i / K for v_i in v]
+    return normalized_m, normalized_v
+
+
+def vecteur_initial(m, v):
+    n = len(m)
+    d = int((n - 1) * n / 2)
+    x0 = [0 for _ in range(d)]
+    matrice_numeros = generation_matrice_numeros(n)
+    for i in range(0, n - 1):
+        for j in range(i + 1, n):
+            index = matrice_numeros[i][j]
+            x0[index] = m[i] * v[j]
+    return x0
 
 
 def optimisation_scipy(m, v):
@@ -39,37 +88,23 @@ def optimisation_scipy(m, v):
         return res
 
     # Contraintes sur les montees et descentes
-    montes_descentes = m + v
-    A = [[0] * d for _ in range(2 * n)]
-
-    # Contraintes de montée
-    compteur_colonne = n - 1
-    compteur_ligne = 0
-    while compteur_colonne < 0:
-        for j in range(compteur_colonne):
-            A[compteur_ligne][compteur_ligne + 1 + j] = 1
-            compteur_ligne += 1
-            compteur_colonne += -1
-
-    # Contraintes de descentes
-    compteur_ligne = 0
-    while compteur_ligne < n - 1:
-        for j in range(compteur_ligne):
-            A[j][1 + compteur_ligne] = 1
-            compteur_ligne += 1
-    print(A)
-    contraintes_montes_descentes = scipy.optimize.LinearConstraint(A, montes_descentes, montes_descentes)
+    normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
+    montes_descentes = normalized_m + normalized_v
+    matrice_contraintes = generation_matrice_contraintes(n)
+    contraintes_montes_descentes = scipy.optimize.LinearConstraint(matrice_contraintes, montes_descentes,
+                                                                   montes_descentes)
 
     # Contraintes sur les valeurs positives
     zeros = [0 for _ in range(4 * n)]
     bnds = [(0, None) for _ in range(d)]
 
-    # Vecteur initial
-    x0 = [0.1 for _ in range(d)]
+    # Vecteur initial : produit des marginales
+    x0 = vecteur_initial(normalized_m, normalized_v)
 
     # Minimisation par la méhtode de scipy
     resultat = scipy.optimize.minimize(entropie, x0, bounds=bnds, constraints=contraintes_montes_descentes)
     print(resultat)
+    return resultat
 
 
 def initialise_matrice_from_vect(x, n):
@@ -82,15 +117,16 @@ def initialise_matrice_from_vect(x, n):
     return matrice
 
 
-def penalisation(m, d, eps):
+def penalisation(m, v, eps):
     """
     :param m: liste des montees (contrainte)
-    :param d: liste des descentes (contrainite)
+    :param v: liste des descentes (contrainite)
     :param eps: valeur de la penalisation
     :return: la matrice OD minimisant l'entropie par la methode de penalisation
     """
     n = len(m)
     inv_esp = 1 / eps
+    normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
 
     # Definition de la fonction a minimiser avec l'ajout des contraintes
     def entropie_et_contraintes(x):
@@ -108,7 +144,7 @@ def penalisation(m, d, eps):
             temp_sum = 0
             for j in range(i + 1, n):
                 temp_sum += matrice[i][j]
-            temp_sum += -m[i]
+            temp_sum += -normalized_m[i]
             res += inv_esp * temp_sum * temp_sum
 
         # Contraintes sur les descentes
@@ -116,25 +152,31 @@ def penalisation(m, d, eps):
             temp_sum = 0
             for i in range(0, j):
                 temp_sum += matrice[i][j]
-            temp_sum += -d[j]
+            temp_sum += -normalized_v[j]
             res += inv_esp * temp_sum * temp_sum
+
+        # Contraintes sur le caractère positif
+        for x_i in x:
+            res += max(-inv_esp * x_i, 0) ** 2
 
         return res
 
     # Fonction scipy
-    x0 = [0.1 for _ in range(int((n - 1) * n / 2))]
+    x0 = vecteur_initial(normalized_m, normalized_v)
     resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
 
     return resultat
 
 
-def qualite_resultat(vect_resultat, m, d):
+def qualite_resultat(vect_resultat, m, v):
     N = len(m)
     matrice_resultat = initialise_matrice_from_vect(vect_resultat, N)
+    normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
     dist = 0
     # Distance pour le respect des sommes sur les lignes et les colonnes
     for i in range(N):
-        dist += (somme_ligne(matrice_resultat, i) - m[i]) ** 2 + (somme_colonne(matrice_resultat, i) - d[i]) ** 2
+        dist += (somme_ligne(matrice_resultat, i) - normalized_m[i]) ** 2 + (
+                somme_colonne(matrice_resultat, i) - normalized_v[i]) ** 2
 
     # Distance pour le respect des valeurs >= 0
     for x_i in vect_resultat:
@@ -161,26 +203,12 @@ def variation_epsilon(m, d):
     return best_vector, best_qualite
 
 
-def affiche_matrice_propre(M):
-    """
-    Affiche la matrice M dans la console Python
-    :param M:
-    """
-    # Déterminer la largeur maximale d'un élément du tableau pour l'alignement
-    largeur_max = 5
-    for ligne in M:
-        # Joindre les éléments de la ligne avec un espace et les aligner à droite selon la largeur maximale
-        ligne_formatee = " ".join(f"{str(round(item, 3)):>{largeur_max}}" for item in ligne)
-        print(ligne_formatee)
-    print('\n')
-    return None
-
-
-generation_matrice_contraintes(4)
-testing = False
+testing = True
 if testing:
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
+
+    print("Variation epsilon vecteur 5")
     vect_res5, qualite_res5 = variation_epsilon(m5, v5)
     affiche_matrice_propre(initialise_matrice_from_vect(vect_res5, 5))
     print("La qualité du resultat est de : ")
@@ -189,8 +217,13 @@ if testing:
 
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
+    print("Variation epsilon vecteur 6")
     vect_res6, qualite_res6 = variation_epsilon(m6, v6)
     affiche_matrice_propre(initialise_matrice_from_vect(vect_res6, 6))
     print("La qualité du resultat est de : ")
     print(str(qualite_res6))
     print(" ")
+
+    print("testing optimization from scipy :" + '\n')
+    optimisation_scipy(m5, v5)
+    optimisation_scipy(m6, v6)
