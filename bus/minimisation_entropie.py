@@ -1,4 +1,5 @@
 import scipy.optimize
+import time
 import numpy as np
 from bus import somme_colonne, somme_ligne
 
@@ -142,15 +143,6 @@ def optimisation_scipy(m, v):
     return resultat
 
 
-def affichage_resultat_opti_scipy(m, v):
-    resultat = optimisation_scipy(m, v)
-    vect_resultat = resultat.x
-    matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
-    qual_resultat = qualite_resultat(vect_resultat, m, v)
-    affiche_matrice_propre(matrice_resultat)
-    print("La qualité du resultat est de :" + '\n' + str(qual_resultat))
-
-
 # Methode de penalisaiton (algorithme personnel)
 
 
@@ -220,7 +212,23 @@ def variation_epsilon(m, d):
             if qualite < best_qualite:
                 best_qualite = qualite
                 best_vector = res_vector
+
     return best_vector, best_qualite
+
+
+def affichage_resultat_opti(m, v, type='scipy'):
+    time_start = time.time()
+    if type == 'scipy':
+        resultat = optimisation_scipy(m, v)
+        vect_resultat = resultat.x
+        qual_resultat = qualite_resultat(vect_resultat, m, v)
+    else:
+        vect_resultat, qual_resultat = variation_epsilon(m, v)
+    matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
+    affiche_matrice_propre(matrice_resultat)
+    print("La qualité du resultat est de :" + '\n' + str(qual_resultat) + '\n')
+    print("Duree du traitement (secondes) :")
+    print(time.time() - time_start)
 
 
 testing = True
@@ -229,21 +237,24 @@ if testing:
     v5 = [0, 1, 2, 2, 3]
 
     print("Variation epsilon vecteur 5")
-    vect_res5, qualite_res5 = variation_epsilon(m5, v5)
-    affiche_matrice_propre(initialise_matrice_from_vect(vect_res5, 5))
-    print("La qualité du resultat est de : ")
-    print(str(qualite_res5))
-    print(" ")
-    print("testing optimization from scipy method :" + '\n')
-    affichage_resultat_opti_scipy(m5, v5)
+    affichage_resultat_opti(m5, v5, type='penalisation')
+    print("Optimisation scipy 5 :" + '\n')
+    affichage_resultat_opti(m5, v5, type='scipy')
     print("__________________________________________________________________________________________________________")
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
     print("Variation epsilon vecteur 6")
-    vect_res6, qualite_res6 = variation_epsilon(m6, v6)
-    affiche_matrice_propre(initialise_matrice_from_vect(vect_res6, 6))
-    print("La qualité du resultat par la methode de penalisation est de : ")
-    print(str(qualite_res6))
-    print(" ")
-    print("testing optimization from scipy method :" + '\n')
-    affichage_resultat_opti_scipy(m6, v6)
+    affichage_resultat_opti(m6, v6, type='penalisation')
+    print("Optimisation scipy 6 :" + '\n')
+    affichage_resultat_opti(m6, v6, type='scipy')
+    print("__________________________________________________________________________________________________________")
+    mA = [40, 37, 38, 39, 45, 36, 35, 50, 38, 50, 55, 35, 35, 32, 0]
+    vA = [0, 33, 35, 38, 42, 35, 33, 52, 40, 47, 49, 38, 40, 45, 38]
+    mA = [494, 292, 403, 176, 670, 358, 242, 1268, 152, 535, 693, 118, 10, 43, 0]
+    vA = [7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470, 0]
+
+    print("Variation epsilon ligne A")
+    affichage_resultat_opti(mA, vA, type='penalisation')
+    
+    print("Optimisation scipy ligne A :" + '\n')
+    affichage_resultat_opti(mA, vA, type='scipy')
