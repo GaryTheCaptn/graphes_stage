@@ -9,13 +9,20 @@ def affiche_matrice_propre(M):
     :param M:
     """
     # Déterminer la largeur maximale d'un élément du tableau pour l'alignement
-    largeur_max = 5
+    largeur_max = 6
     for ligne in M:
         # Joindre les éléments de la ligne avec un espace et les aligner à droite selon la largeur maximale
-        ligne_formatee = " ".join(f"{str(round(item, 3)):>{largeur_max}}" for item in ligne)
+        ligne_formatee = " ".join(f"{str(round(item, 5)):>{largeur_max}}" for item in ligne)
         print(ligne_formatee)
     print('\n')
     return None
+
+
+def normalisaiton_vecteurs(m, v):
+    K = sum(m)
+    normalized_m = [m_i / K for m_i in m]
+    normalized_v = [v_i / K for v_i in v]
+    return normalized_m, normalized_v
 
 
 def generation_matrice_numeros(n):
@@ -27,6 +34,53 @@ def generation_matrice_numeros(n):
             index += 1
     return M
 
+
+def vecteur_initial(m, v):
+    n = len(m)
+    d = int((n - 1) * n / 2)
+    x0 = [0 for _ in range(d)]
+    matrice_numeros = generation_matrice_numeros(n)
+    for i in range(0, n - 1):
+        for j in range(i + 1, n):
+            index = matrice_numeros[i][j]
+            x0[index] = m[i] * v[j]
+    return x0
+
+
+def initialise_matrice_from_vect(x, n):
+    matrice = [[0] * n for _ in range(n)]
+    index = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            matrice[i][j] = x[index]
+            index += 1
+    return matrice
+
+
+def qualite_resultat(vect_resultat, m, v):
+    """
+    :param vect_resultat: un vecteur avec les resultats d'une optimisation
+    :param m: les montees (non-normalises)
+    :param v: les descentes (non-normalises)
+    :return: la qualite du resultat vis-a-vis du respect des contraintes
+    """
+    N = len(m)
+    matrice_resultat = initialise_matrice_from_vect(vect_resultat, N)
+    normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
+    dist = 0
+    # Distance pour le respect des sommes sur les lignes et les colonnes
+    for i in range(N):
+        dist += (somme_ligne(matrice_resultat, i) - normalized_m[i]) ** 2 + (
+                somme_colonne(matrice_resultat, i) - normalized_v[i]) ** 2
+
+    # Distance pour le respect des valeurs >= 0
+    for x_i in vect_resultat:
+        if x_i < 0:
+            dist += (x_i) ** 2
+    return dist
+
+
+# Methode Trust-Region Constrained Algorithm de Scipy
 
 def generation_matrice_contraintes(n):
     d = int((n - 1) * n / 2)
@@ -56,25 +110,6 @@ def generation_matrice_contraintes(n):
     return A
 
 
-def normalisaiton_vecteurs(m, v):
-    K = sum(m)
-    normalized_m = [m_i / K for m_i in m]
-    normalized_v = [v_i / K for v_i in v]
-    return normalized_m, normalized_v
-
-
-def vecteur_initial(m, v):
-    n = len(m)
-    d = int((n - 1) * n / 2)
-    x0 = [0 for _ in range(d)]
-    matrice_numeros = generation_matrice_numeros(n)
-    for i in range(0, n - 1):
-        for j in range(i + 1, n):
-            index = matrice_numeros[i][j]
-            x0[index] = m[i] * v[j]
-    return x0
-
-
 def optimisation_scipy(m, v):
     n = len(m)
     d = int((n - 1) * n / 2)
@@ -102,19 +137,21 @@ def optimisation_scipy(m, v):
     x0 = vecteur_initial(normalized_m, normalized_v)
 
     # Minimisation par la méhtode de scipy
-    resultat = scipy.optimize.minimize(entropie, x0, bounds=bnds, constraints=contraintes_montes_descentes)
-    print(resultat)
+    resultat = scipy.optimize.minimize(entropie, x0, method='trust-constr', bounds=bnds,
+                                       constraints=contraintes_montes_descentes)
     return resultat
 
 
-def initialise_matrice_from_vect(x, n):
-    matrice = [[0] * n for _ in range(n)]
-    index = 0
-    for i in range(n):
-        for j in range(i + 1, n):
-            matrice[i][j] = x[index]
-            index += 1
-    return matrice
+def affichage_resultat_opti_scipy(m, v):
+    resultat = optimisation_scipy(m, v)
+    vect_resultat = resultat.x
+    matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
+    qual_resultat = qualite_resultat(vect_resultat, m, v)
+    affiche_matrice_propre(matrice_resultat)
+    print("La qualité du resultat est de :" + '\n' + str(qual_resultat))
+
+
+# Methode de penalisaiton (algorithme personnel)
 
 
 def penalisation(m, v, eps):
@@ -168,23 +205,6 @@ def penalisation(m, v, eps):
     return resultat
 
 
-def qualite_resultat(vect_resultat, m, v):
-    N = len(m)
-    matrice_resultat = initialise_matrice_from_vect(vect_resultat, N)
-    normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
-    dist = 0
-    # Distance pour le respect des sommes sur les lignes et les colonnes
-    for i in range(N):
-        dist += (somme_ligne(matrice_resultat, i) - normalized_m[i]) ** 2 + (
-                somme_colonne(matrice_resultat, i) - normalized_v[i]) ** 2
-
-    # Distance pour le respect des valeurs >= 0
-    for x_i in vect_resultat:
-        if x_i < 0:
-            dist += (x_i) ** 2
-    return dist
-
-
 def variation_epsilon(m, d):
     res_trouve = True
     best_vector = []
@@ -214,16 +234,16 @@ if testing:
     print("La qualité du resultat est de : ")
     print(str(qualite_res5))
     print(" ")
-
+    print("testing optimization from scipy method :" + '\n')
+    affichage_resultat_opti_scipy(m5, v5)
+    print("__________________________________________________________________________________________________________")
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
     print("Variation epsilon vecteur 6")
     vect_res6, qualite_res6 = variation_epsilon(m6, v6)
     affiche_matrice_propre(initialise_matrice_from_vect(vect_res6, 6))
-    print("La qualité du resultat est de : ")
+    print("La qualité du resultat par la methode de penalisation est de : ")
     print(str(qualite_res6))
     print(" ")
-
-    print("testing optimization from scipy :" + '\n')
-    optimisation_scipy(m5, v5)
-    optimisation_scipy(m6, v6)
+    print("testing optimization from scipy method :" + '\n')
+    affichage_resultat_opti_scipy(m6, v6)
