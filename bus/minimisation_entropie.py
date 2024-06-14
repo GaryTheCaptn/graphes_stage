@@ -10,7 +10,7 @@ def affiche_matrice_propre(M):
     :param M:
     """
     # Déterminer la largeur maximale d'un élément du tableau pour l'alignement
-    largeur_max = 6
+    largeur_max = 9
     for ligne in M:
         # Joindre les éléments de la ligne avec un espace et les aligner à droite selon la largeur maximale
         ligne_formatee = " ".join(f"{str(round(item, 5)):>{largeur_max}}" for item in ligne)
@@ -123,6 +123,24 @@ def optimisation_scipy(m, v):
                 res += x_i * np.log(x_i)
         return res
 
+    def jacobian_entropie(x):
+        res = []
+        for x_i in x:
+            res += [np.log(x_i) + 1]
+        return res
+
+    def hessian_entropie(x):
+        res = []
+        for i in range(len(x)):
+            ligne_res = []
+            for j in range(len(x)):
+                if i != j:
+                    ligne_res.append(0)
+                else:
+                    ligne_res.append(1 / x[i])
+            res.append(ligne_res)
+        return res
+
     # Contraintes sur les montees et descentes
     normalized_m, normalized_v = normalisaiton_vecteurs(m, v)
     montes_descentes = normalized_m + normalized_v
@@ -138,12 +156,35 @@ def optimisation_scipy(m, v):
     x0 = vecteur_initial(normalized_m, normalized_v)
 
     # Minimisation par la méhtode de scipy
-    resultat = scipy.optimize.minimize(entropie, x0, method='trust-constr', bounds=bnds,
+    resultat = scipy.optimize.minimize(entropie, x0, jac=jacobian_entropie, hess=hessian_entropie,
+                                       method='trust-constr', bounds=bnds,
                                        constraints=contraintes_montes_descentes)
     return resultat
 
 
 # Methode de penalisaiton (algorithme personnel)
+
+def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
+    # On pose l'initialisation
+    res = [x0]
+    iteration = 0
+
+    while iteration < itmax:
+        # Si on a pas dépassé le nombre maximal d'itéreations, alors on applique l'algorithme
+        xk = res[iteration]
+        xk1 = np.array(xk - pas * fct_gradient(xk))
+        res.append(xk1)  # On ajoute l'itération en cours à la liste des itérés.
+
+        # On regarde si le critère d'arrêt d'être suffisammment proche de la solution est vérifié
+        erreurk1 = qualite_resultat(xk1, m, v)  # On calcule l'erreur
+        if erreurk1 <= erreur:
+            # On est suffisament proche de la solution, on arrête l'algorithme.
+            iteration = itmax
+        else:
+            # On est pas encore assez proche, on va faire une autre itération.
+            iteration += 1
+
+    return res
 
 
 def penalisation(m, v, eps):
@@ -190,6 +231,14 @@ def penalisation(m, v, eps):
 
         return res
 
+    # Definition de la jacobienne
+    def jacobian_entropie_et_contraintes(x):
+        res = []
+        for x_i in x:
+            res.append(x_i * np.log(
+                x_i) + 'somme sur les trucs qui sont sur la même ligne et mu' + 'somme sur les trucs qui sont sur la même colonne')
+        return res
+
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
     resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
@@ -201,7 +250,7 @@ def variation_epsilon(m, d):
     res_trouve = True
     best_vector = []
     best_qualite = 100000
-    eps = 0.1
+    eps = 1
     while res_trouve:
         eps = eps / 10
         resultat = penalisation(m, d, eps)
@@ -216,6 +265,9 @@ def variation_epsilon(m, d):
     return best_vector, best_qualite
 
 
+# Fonction affichage des resultats
+
+
 def affichage_resultat_opti(m, v, type='scipy'):
     time_start = time.time()
     if type == 'scipy':
@@ -224,11 +276,14 @@ def affichage_resultat_opti(m, v, type='scipy'):
         qual_resultat = qualite_resultat(vect_resultat, m, v)
     else:
         vect_resultat, qual_resultat = variation_epsilon(m, v)
-    matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
-    affiche_matrice_propre(matrice_resultat)
-    print("La qualité du resultat est de :" + '\n' + str(qual_resultat) + '\n')
-    print("Duree du traitement (secondes) :")
-    print(time.time() - time_start)
+    if len(vect_resultat) > 0:
+        matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
+        affiche_matrice_propre(matrice_resultat)
+        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
+        print("Duree du traitement (secondes) :")
+        print(time.time() - time_start)
+    else:
+        print("Pas de resultat")
 
 
 testing = True
@@ -251,10 +306,10 @@ if testing:
     mA = [40, 37, 38, 39, 45, 36, 35, 50, 38, 50, 55, 35, 35, 32, 0]
     vA = [0, 33, 35, 38, 42, 35, 33, 52, 40, 47, 49, 38, 40, 45, 38]
     mA = [494, 292, 403, 176, 670, 358, 242, 1268, 152, 535, 693, 118, 10, 43, 0]
-    vA = [7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470, 0]
+    vA = [0, 7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470]
 
     print("Variation epsilon ligne A")
     affichage_resultat_opti(mA, vA, type='penalisation')
-    
+
     print("Optimisation scipy ligne A :" + '\n')
     affichage_resultat_opti(mA, vA, type='scipy')
