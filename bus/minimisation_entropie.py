@@ -1,6 +1,8 @@
 import scipy.optimize
 import time
+import random
 import numpy as np
+import matplotlib.pyplot as plt
 from bus import somme_colonne, somme_ligne
 
 
@@ -101,6 +103,20 @@ def qualite_resultat(vect_resultat, m, v):
     return dist
 
 
+def comparaison_carres(matrice1, matrice2):
+    """
+    :param matrice1: Une matrice OD
+    :param matrice2: Une matrice OD
+    :return: la distance entre les deux matrices coefficient par coefficient
+    """
+    res = 0
+    n = len(matrice1)
+    for i in range(n):
+        for j in range(i + 1, n):  # On a pas besoin de regarder les cases en dessous de la diagonale.
+            res += (matrice1 - matrice2) ** 2
+    return res
+
+
 # Methode Trust-Region Constrained Algorithm de Scipy
 
 def generation_matrice_contraintes(n):
@@ -194,44 +210,15 @@ def optimisation_scipy(m, v):
     resultat = scipy.optimize.minimize(entropie, x0, jac=jacobian_entropie, hess=hessian_entropie,
                                        method='trust-constr', bounds=bnds,
                                        constraints=contraintes_montes_descentes)
-    return resultat
+
+    # On recupere les informations qui nous interesse
+    vect_resultat = resultat.x
+    qual_resultat = qualite_resultat(vect_resultat, normalized_m, normalized_v)
+
+    return vect_resultat, qual_resultat
 
 
 # Methode de penalisaiton (algorithme perso)
-
-def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
-    """
-    :param x0: vecteur initial (taille d)
-    :param pas: float
-    :param itmax: nombre maximal d'iterations
-    :param erreur: seuil d'erreur
-    :param fct_gradient: fonction gradient associee a la fonction a minimiser
-    :param m: liste d'entiers des montees
-    :param v: lsite d'entiers des descentes
-    :return: le vecteur resultat apres itmax iterations ou si l'erreur seuil a ete atteinte.
-    """
-    # On pose l'initialisation
-    res = [x0]
-    iteration = 0
-
-    while iteration < itmax:
-        # Si on a pas dépassé le nombre maximal d'itéreations, alors on applique l'algorithme
-        xk = res[iteration]
-        xk1 = np.array(xk - pas * fct_gradient(xk))
-        res.append(xk1)  # On ajoute l'itération en cours à la liste des itérés.
-
-        # On regarde si le critère d'arrêt d'être suffisammment proche de la solution est vérifié
-        erreurk1 = qualite_resultat(xk1, m, v)  # On calcule l'erreur
-        if erreurk1 <= erreur:
-            # On est suffisament proche de la solution, on arrête l'algorithme.
-            iteration = itmax
-        else:
-            # On est pas encore assez proche, on va faire une autre itération.
-            iteration += 1
-
-    return res
-
-
 def index_ligne_colonne(index, matrice_numeros):
     """
     :param index: l'index d'un x_k dans le vecteur x
@@ -343,7 +330,8 @@ def penalisation(m, v, eps):
 
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
-    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
+    # resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
+    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
 
     return resultat
 
@@ -373,17 +361,146 @@ def variation_epsilon(m, d):
     return best_vector, best_qualite
 
 
+# Gradient à pas fixe
+
+def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
+    """
+    :param x0: vecteur initial (taille d)
+    :param pas: float
+    :param itmax: nombre maximal d'iterations
+    :param erreur: seuil d'erreur
+    :param fct_gradient: fonction gradient associee a la fonction a minimiser
+    :param m: liste d'entiers des montees
+    :param v: lsite d'entiers des descentes
+    :return: le vecteur resultat apres itmax iterations ou si l'erreur seuil a ete atteinte et la qualite du resutlat
+    """
+    # On pose l'initialisation
+    res = [x0]
+    iteration = 0
+    qual = 0
+
+    while iteration < itmax:
+        # Si on a pas dépassé le nombre maximal d'itéreations, alors on applique l'algorithme
+        xk = res[iteration]
+        xk1 = np.array(xk - pas * fct_gradient(xk))
+        res.append(xk1)  # On ajoute l'itération en cours à la liste des itérés.
+
+        # On regarde si le critère d'arrêt d'être suffisammment proche de la solution est vérifié
+        qual = qualite_resultat(xk1, m, v)
+        erreurk1 = qual  # On calcule l'erreur
+        if erreurk1 <= erreur:
+            # On est suffisament proche de la solution, on arrête l'algorithme.
+            iteration = itmax
+        else:
+            # On est pas encore assez proche, on va faire une autre itération.
+            iteration += 1
+
+    return res, qual
+
+
+# Fonctions pour les tests :
+# Test 1 : Comparaison qualite et temps entre les deux methodes a partir de donnees euleriennes
+def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
+    """
+    :param nbr_voyageurs: nombre cumule de voyageurs sur la ligne
+    :param nbr_arrets: nombre d'arrets sur la ligne
+    :return: une liste correspondant aux montees, une liste correspondant aux descentes
+    """
+    montees = [0 * nbr_arrets]
+    descentes = [0 * nbr_arrets]
+    arret_courant = 0
+    nbr_voyageurs_courant = 0
+    personnes_restantes = nbr_voyageurs
+
+    for i in range(0, nbr_arrets - 1):
+
+        # Si on est au dernier arret, personne ne monte et tout le monde doit descendre
+        if i == nbr_arrets - 2:
+            montees_i = 0
+            descentes_i = nbr_voyageurs_courant
+
+        # Si on est à l'avant-dernier arret, il faut faire monter toutes les personnes qui manquent
+        elif i == nbr_arrets - 3:
+            montees_i = personnes_restantes
+            descentes_i = random.randint(0, nbr_voyageurs_courant)
+
+        # Sinon, on fait monter un nombre aleatoire de personnes (parmi les nombres de personnes restantes)
+        # On fait descendre un nombre aleatoire de personnes (parmi les voyageurs qui etaient dans le bus)
+        else:
+            montees_i = random.randint(0, personnes_restantes)
+            descentes_i = random.randint(0, nbr_voyageurs_courant)
+
+        montees.append(montees_i)
+        descentes.append(descentes_i)
+        personnes_restantes += -montees_i  # On enleve les personnes montees
+        nbr_voyageurs_courant = nbr_voyageurs_courant + montees_i - descentes_i  # On met a jour le nombre de voyageurs
+
+    return montees, descentes
+
+
+def comparaisons_methodes():
+    liste_arrets = np.linspace(5, 20, 16)
+    liste_arrets = list(map(int, liste_arrets))
+
+    qualite_methode_epsilon = []
+    qualite_scipy = []
+
+    temps_epsilon = []
+    temps_scipy = []
+
+    for nbr_arrets in liste_arrets:
+        print(nbr_arrets)
+        m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 3, nbr_arrets)
+
+        # On teste la methode scipy
+        time_start_scipy = time.time()
+        vect_scipy, qual_scipy = optimisation_scipy(m, v)
+        qualite_scipy.append(qual_scipy)
+        temps_scipy.append(time.time() - time_start_scipy)
+
+        # On teste la methode eps
+        time_start_eps = time.time()
+        vect_eps, qual_eps = variation_epsilon(m, v)
+        qualite_methode_epsilon.append(qual_eps)
+        temps_epsilon.append(time.time() - time_start_eps)
+
+    # Temps de calcul
+    plt.scatter(liste_arrets, temps_epsilon, label='temps epsilon')
+    plt.scatter(liste_arrets, temps_scipy, label='temps scipy')
+    plt.title("Comparaison temps de calcul en fonction du nombre d'arrets")
+    plt.legend()
+    plt.show()
+
+    # Qualite du resultat
+    plt.scatter(liste_arrets, qualite_methode_epsilon, label='qualite epsilon')
+    plt.scatter(liste_arrets, qualite_scipy, label='qualite scipy')
+    plt.title("Comparaison qualite en fonction du nombre d'arrets")
+    plt.legend()
+    plt.show()
+
+
+# Test 2 : Comparaison (moindres carres) matrices OD et matrices trouvees par les deux methodes.
+# Rappel : fonction pour passer de matrice OD à Euler : bus.lagrange_to_euler(matrice)
+
 # Fonction affichage des resultats
-
-
 def affichage_resultat_opti(m, v, type='scipy'):
+    """
+    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie.
+    :param m: liste d'entiers montees
+    :param v: liste d'entiers descentes
+    :param type: scipy ou epsilon
+    :return: None
+    """
     time_start = time.time()
+    # On recupere le resultat
+    # scipy
     if type == 'scipy':
-        resultat = optimisation_scipy(m, v)
-        vect_resultat = resultat.x
-        qual_resultat = qualite_resultat(vect_resultat, m, v)
+        vect_resultat, qual_resultat = optimisation_scipy(m, v)
+    # epsilon
     else:
         vect_resultat, qual_resultat = variation_epsilon(m, v)
+
+    # S'il y a un resultat
     if len(vect_resultat) > 0:
         matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
         affiche_matrice_propre(matrice_resultat)
@@ -395,9 +512,10 @@ def affichage_resultat_opti(m, v, type='scipy'):
 
 
 if __name__ == "__main__":
+    comparaisons_methodes()
+
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
-
     print("Variation epsilon vecteur 5")
     affichage_resultat_opti(m5, v5, type='penalisation')
     print("Optimisation scipy 5 :" + '\n')
@@ -410,13 +528,9 @@ if __name__ == "__main__":
     print("Optimisation scipy 6 :" + '\n')
     affichage_resultat_opti(m6, v6, type='scipy')
     print("__________________________________________________________________________________________________________")
-    mA = [40, 37, 38, 39, 45, 36, 35, 50, 38, 50, 55, 35, 35, 32, 0]
-    vA = [0, 33, 35, 38, 42, 35, 33, 52, 40, 47, 49, 38, 40, 45, 38]
     mA = [494, 292, 403, 176, 670, 358, 242, 1268, 152, 535, 693, 118, 10, 43, 0]
     vA = [0, 7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470]
-
     print("Variation epsilon ligne A")
     affichage_resultat_opti(mA, vA, type='penalisation')
-
     print("Optimisation scipy ligne A :" + '\n')
     affichage_resultat_opti(mA, vA, type='scipy')
