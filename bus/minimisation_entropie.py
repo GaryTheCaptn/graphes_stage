@@ -20,6 +20,11 @@ def affiche_matrice_propre(M):
 
 
 def normalisaiton_vecteurs(m, v):
+    """
+    :param m: un liste d'entiers (montees)
+    :param v: une liste d'entiers (descentes)
+    :return: les vecteurs m et v normalises.
+    """
     K = sum(m)
     normalized_m = [m_i / K for m_i in m]
     normalized_v = [v_i / K for v_i in v]
@@ -41,6 +46,11 @@ def generation_matrice_numeros(n):
 
 
 def vecteur_initial(m, v):
+    """
+    :param m: liste d'entier (montees)
+    :param v: liste d'entier (descentes)
+    :return: le vecteur initial pour la minimisation qui correspond au produit des marginales (m_i * v_j = gamma_ij)
+    """
     n = len(m)
     d = int((n - 1) * n / 2)
     x0 = [0 for _ in range(d)]
@@ -53,6 +63,12 @@ def vecteur_initial(m, v):
 
 
 def initialise_matrice_from_vect(x, n):
+    """
+    :param x: un vecteur d'entiers de taille d = n*(n-1)/2
+    :param n: la taille de la matrice
+    :return: la matrice de taille n dont les coefficients sur la partie superieure (stricte) droite
+    correspond au vecteur x.
+    """
     matrice = [[0] * n for _ in range(n)]
     index = 0
     for i in range(n):
@@ -88,6 +104,10 @@ def qualite_resultat(vect_resultat, m, v):
 # Methode Trust-Region Constrained Algorithm de Scipy
 
 def generation_matrice_contraintes(n):
+    """
+    :param n: la taille de la matrice
+    :return: la matrice de contraintes A tel que Ax = m++v
+    """
     d = int((n - 1) * n / 2)
 
     # Matrice numéros
@@ -116,9 +136,15 @@ def generation_matrice_contraintes(n):
 
 
 def optimisation_scipy(m, v):
+    """
+    :param m: liste d'entiers de montees (non-normalise)
+    :param v: listen d'entier de descentes (non-normalise)
+    :return: le resultat de l'optimization par la mehtode de Scipy avec contraintes.
+    """
     n = len(m)
     d = int((n - 1) * n / 2)
 
+    # Definition de la fonction a minimiser
     def entropie(x):
         res = 0
         # Entropie
@@ -127,6 +153,7 @@ def optimisation_scipy(m, v):
                 res += x_i * np.log(x_i)
         return res
 
+    # Definition de la jacobienne associee
     def jacobian_entropie(x):
         res = []
         for x_i in x:
@@ -136,6 +163,7 @@ def optimisation_scipy(m, v):
                 res += [0]
         return res
 
+    # Definition de la hessienne associee
     def hessian_entropie(x):
         res = []
         for i in range(len(x)):
@@ -169,9 +197,19 @@ def optimisation_scipy(m, v):
     return resultat
 
 
-# Methode de penalisaiton (algorithme personnel)
+# Methode de penalisaiton (algorithme perso)
 
 def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
+    """
+    :param x0: vecteur initial (taille d)
+    :param pas: float
+    :param itmax: nombre maximal d'iterations
+    :param erreur: seuil d'erreur
+    :param fct_gradient: fonction gradient associee a la fonction a minimiser
+    :param m: liste d'entiers des montees
+    :param v: lsite d'entiers des descentes
+    :return: le vecteur resultat apres itmax iterations ou si l'erreur seuil a ete atteinte.
+    """
     # On pose l'initialisation
     res = [x0]
     iteration = 0
@@ -303,25 +341,6 @@ def penalisation(m, v, eps):
             index += 1
         return res
 
-    # Definition de la hessienne
-    def hessian_entropie_et_contraintes(x):
-        res = []
-        matrice_numeros = generation_matrice_numeros(n)
-        for i in range(0, len(x)):
-            res_i = []
-            liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros)
-            liste_numeros_colonne = liste_numeros_meme_colonne(i, matrice_numeros)
-            for j in range(0, len(x)):
-                temp = 0
-                if i == j:
-                    temp += 1 / x[i]
-                if j in liste_numeros_ligne:
-                    temp += 2 * inv_esp
-                if j in liste_numeros_colonne:
-                    temp += 2 * inv_esp
-                res_i.append(temp)
-            res.append(res_i)
-
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
     resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
@@ -330,6 +349,12 @@ def penalisation(m, v, eps):
 
 
 def variation_epsilon(m, d):
+    """
+    :param m: liste d'entiers des montees
+    :param d: liste d'entiers des descentes
+    :return: On teste tous les epsilons de 0.1 jusqu'a ce qu'il n'y ait plus de resultat en divisant par 10 a chaque iteration.
+    On renvoie le meilleur vecteur et sa qualite.
+    """
     res_trouve = True
     best_vector = []
     best_qualite = 100000
