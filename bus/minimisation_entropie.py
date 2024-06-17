@@ -130,7 +130,10 @@ def optimisation_scipy(m, v):
     def jacobian_entropie(x):
         res = []
         for x_i in x:
-            res += [np.log(x_i) + 1]
+            if x_i > 0:
+                res += [np.log(x_i) + 1]
+            else:
+                res += [0]
         return res
 
     def hessian_entropie(x):
@@ -279,20 +282,24 @@ def penalisation(m, v, eps):
         matrice_numeros = generation_matrice_numeros(n)
         index = 0
         for x_i in x:
+            val = 0
+            if x_i > 0:
+                val += np.log(x_i) + 1
             i, j = index_ligne_colonne(index, matrice_numeros)
             liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros)
             somme_ligne = 0
             for k in liste_numeros_ligne:
                 somme_ligne += x[k]
             somme_ligne = 2 * inv_esp * (somme_ligne - normalized_m[i])
+            val += somme_ligne
 
             liste_numeros_colonne = liste_numeros_meme_colonne(j, matrice_numeros)
             somme_colonne = 0
             for k in liste_numeros_colonne:
                 somme_colonne += x[k]
             somme_colonne = 2 * inv_esp * (somme_colonne - normalized_v[j])
-            res.append(x_i * np.log(
-                x_i) + somme_ligne + somme_colonne)
+            val += somme_colonne
+            res.append(val)
             index += 1
         return res
 
@@ -317,8 +324,7 @@ def penalisation(m, v, eps):
 
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
-    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes,
-                                       hess=hessian_entropie_et_contraintes)
+    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
 
     return resultat
 
