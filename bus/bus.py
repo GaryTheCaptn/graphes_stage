@@ -164,8 +164,7 @@ def affiche_matrice(M):
         print(str(ligne) + '\n')
 
 
-testing = False
-if testing:
+if __name__ == "__main__":
     # Test sur la ligne a de metro
     noms_arrets_ligne_A = ["Poterie", "Blosne", "Triangle", "Italie", "HF", "Clem", "JC", "Gares", "CDG", "Repu",
                            "StAnne", "Anatole Fr", "PC", "Villejean", "Kenndy"]

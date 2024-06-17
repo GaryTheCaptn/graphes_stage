@@ -27,6 +27,10 @@ def normalisaiton_vecteurs(m, v):
 
 
 def generation_matrice_numeros(n):
+    """
+    :param n: entier, taille de la matrice
+    :return: une matrice avec les index de chaque case pour le vecteur colonne associe et des -1 pour les autres
+    """
     M = [[-1] * n for _ in range(n)]
     index = 0
     for i in range(0, n):
@@ -187,10 +191,48 @@ def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     return res
 
 
+def index_ligne_colonne(index, matrice_numeros):
+    """
+    :param index: l'index d'un x_k dans le vecteur x
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :return: les indices i(ligne) et j (colonne) ou se trouve l'element x_i dans la matrice numeros
+    """
+    n = len(matrice_numeros)
+    for i in range(0, n):
+        for j in range(0, n):
+            if matrice_numeros[i][j] == index:
+                return i, j
+    return -1, -1
+
+
+def liste_numeros_meme_ligne(i, matrice_numeros):
+    """
+    :param i: un numero de ligne
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :return: la liste des indices qui sont sur la ligne i.
+    """
+    res = []
+    for j in range(i + 1, len(matrice_numeros)):
+        res.append(matrice_numeros[i][j])
+    return res
+
+
+def liste_numeros_meme_colonne(j, matrice_numeros):
+    """
+    :param j: un numero de colonne
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :return: la liste des indices qui sont sur la colonne j.
+    """
+    res = []
+    for i in range(0, j):
+        res.append(matrice_numeros[i][j])
+    return res
+
+
 def penalisation(m, v, eps):
     """
     :param m: liste des montees (contrainte)
-    :param v: liste des descentes (contrainite)
+    :param v: liste des descentes (contrainte)
     :param eps: valeur de la penalisation
     :return: la matrice OD minimisant l'entropie par la methode de penalisation
     """
@@ -206,7 +248,7 @@ def penalisation(m, v, eps):
             if x_i > 0:
                 res += x_i * np.log(x_i)
 
-        # Reconstituer la matrice pour faire les calculs sur les lignes et colonnes
+        # Reconstituer la matrice a partir du vect x pour faire les calculs sur les lignes et colonnes
         matrice = initialise_matrice_from_vect(x, n)
 
         # Contraintes sur les montees
@@ -235,15 +277,26 @@ def penalisation(m, v, eps):
     def jacobian_entropie_et_contraintes(x):
         res = []
         matrice_numeros = generation_matrice_numeros(n)
+        index = 0
         for x_i in x:
-            liste_numeros_ligne = []
+            i, j = index_ligne_colonne(index, matrice_numeros)
+            liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros)
             somme_ligne = 0
-            liste_numeros_colonne = []
+            for k in liste_numeros_ligne:
+                somme_ligne += x[k]
+            somme_ligne = 2 * inv_esp * (somme_ligne - normalized_m[i])
+
+            liste_numeros_colonne = liste_numeros_meme_colonne(j, matrice_numeros)
             somme_colonne = 0
+            for k in liste_numeros_colonne:
+                somme_colonne += x[k]
+            somme_colonne = 2 * inv_esp * (somme_colonne - normalized_v[j])
             res.append(x_i * np.log(
                 x_i) + somme_ligne + somme_colonne)
+            index += 1
         return res
 
+    # Definition de la hessienne
     def hessian_entropie_et_contraintes(x):
         res = []
 
@@ -294,8 +347,7 @@ def affichage_resultat_opti(m, v, type='scipy'):
         print("Pas de resultat")
 
 
-testing = True
-if testing:
+if __name__ == "__main__":
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
 
