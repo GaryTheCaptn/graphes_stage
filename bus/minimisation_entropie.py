@@ -234,10 +234,18 @@ def penalisation(m, v, eps):
     # Definition de la jacobienne
     def jacobian_entropie_et_contraintes(x):
         res = []
+        matrice_numeros = generation_matrice_numeros(n)
         for x_i in x:
+            liste_numeros_ligne = []
+            somme_ligne = 0
+            liste_numeros_colonne = []
+            somme_colonne = 0
             res.append(x_i * np.log(
-                x_i) + 'somme sur les trucs qui sont sur la même ligne et mu' + 'somme sur les trucs qui sont sur la même colonne')
+                x_i) + somme_ligne + somme_colonne)
         return res
+
+    def hessian_entropie_et_contraintes(x):
+        res = []
 
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
