@@ -299,10 +299,26 @@ def penalisation(m, v, eps):
     # Definition de la hessienne
     def hessian_entropie_et_contraintes(x):
         res = []
+        matrice_numeros = generation_matrice_numeros(n)
+        for i in range(0, len(x)):
+            res_i = []
+            liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros)
+            liste_numeros_colonne = liste_numeros_meme_colonne(i, matrice_numeros)
+            for j in range(0, len(x)):
+                temp = 0
+                if i == j:
+                    temp += 1 / x[i]
+                if j in liste_numeros_ligne:
+                    temp += 2 * inv_esp
+                if j in liste_numeros_colonne:
+                    temp += 2 * inv_esp
+                res_i.append(temp)
+            res.append(res_i)
 
     # Fonction scipy
     x0 = vecteur_initial(normalized_m, normalized_v)
-    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
+    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes,
+                                       hess=hessian_entropie_et_contraintes)
 
     return resultat
 

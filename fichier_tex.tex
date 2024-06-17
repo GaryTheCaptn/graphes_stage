@@ -1,0 +1,800 @@
+\documentclass[12pt]{article}
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{lipsum}
+\usepackage{amsmath,amsthm}
+\usepackage{amssymb}
+\usepackage{changepage}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{multicol} % Pour les colonnes
+\usepackage{hyperref}
+\usepackage{csquotes}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Python,
+  extendedchars,  % Extended ASCII
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{teal},
+  stringstyle=\color{violet},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+\tikzstyle{box} = [rectangle, 
+minimum width=2cm, 
+minimum height=1cm,
+text centered, 
+draw=black]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+\bibliographystyle{abbrvnat}
+
+\newcommand{\K}{\mathbb{K}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Rd}{\mathbb{R}^d}
+\newcommand{\I}{\mathbf{I}}
+\newcommand{\dcrochetg}{[\![}
+\newcommand{\dcrochetd}{]\!]}
+\newcommand{\defin}{\underline{Définition :}}
+\newcommand{\thm}{\underline{Théorème :}}
+\newcommand{\rmq}{\underline{Remarque :}}
+\newcommand{\prop}{\underline{Proposition :}}
+\newcommand{\demo}{\underline{Démonstration :}}
+\newcommand{\lemme}{\underline{Lemme :}}
+
+\title{Compte rendu de stage}
+\author{Garance Malnoë\\
+Stage sous la direction de Sylvain Faure\\
+Institut de Mathématiques d'Orsay}
+\date{Mai - Juin 2024}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+\section{Introduction}
+ Une super introduction.
+\section{Passage de données eulériennes à lagrangiennes}
+Les termes "eulérien" et "lagrangien" font référence à deux manières d'appréhender des phénomènes de transport ou de mouvement. Ils sont couramment utilisés en mécanique des fluides, mais ils peuvent plus généralement s'appliquer à toutes les entités évoluant dans un espace (un  espace physique comme un espace plus abstrait). Ils permettent de qualifier à la fois la manière dont peuvent être recueillies des données de positions ou d'état des entités considérées et l'approche adoptée pour écrire des modèles visant à décrire ces phénomènes de mouvement.
+\subsection{Données lagrangiennes}
+La description lagrangienne consiste à suivre les entités tout au long de leur mouvement à partir de leur position d'origine.\\
+\\
+Si l'on considère, par exemple, un ensemble de $N$ particules évoluant dans l'espace physique $\mathbb{R}^d$, la donnée de leurs positions au cours du temps $t \mapsto x(t) = (x_i(t))_{i \in \dcrochetg1;N\dcrochetd} \in \R^d $ est lagrangienne. De la même manière, la collection des vitesses au cours du temps des $N$ particules $(u_i(t))_{i \in \dcrochetg1;N\dcrochetd} $ où $u_i = x'_i(t)$ est une donnée lagrangienne.\\
+\\
+Par la suite, nous nous intéresserons aux déplacements d'individus sur un territoire donné. Pour cela, nous pouvons, par exemple, récupérer les données GPS d’un téléphone portable au cours des déplacements de son propriétaire. Ces données sont de nature lagrangiennes : même si le droit ne permet pas de les stocker avec l’identité de la personne suivie, un identifiant d’anonymisation permet d’associer plusieurs positions successives à un seul individu.
+\subsection{Données eulériennes}
+La description eulérienne est basée sur l'observation de zones de l'espace dans lequel le mouvement s'effectue. On regarde "ce qu'il se passe" dans la zone sans prendre en compte l'identité des entités observées.\\
+\\
+En se replaçant dans le cadre de l'étude des déplacements sur un territoire, la mesure du nombre de passages à l'entrée ou la sortie d'une gare au cours du temps ou du nombre de voitures sur un tronçon de route au cours du temps sont des données de nature eulérienne.
+
+\subsection{Passage de l'un à l'autre}
+Après avoir récupéré des données de nature lagrangienne ou eulérienne, il peut être pertinent de se demander s'il est possible de transformer ces données en données de l'autre nature.\\
+\\
+Il est souvent possible de passer de la vision lagrangienne à la vision eulérienne. Faisons l'exemple avec la modélisation des trajectoires de $N$ particules dans un espace donné. On introduit la notion de masse ponctuelle : à une particule située en un point $x$ de l'espace, on associe la mesure $\delta_x$ qui est une application de l'ensemble des parties de l'espace dans $\R_+$ (ou plus simplement $\N$ si on se limite à compter des entités). Pour $A  \subset \R^d$, on dit que $\delta_x(A)$ vaut 1 si $x \in A$, 0 sinon. Si deux particules se trouvent au même endroit, on applique une règle de sommation : $\delta_x + \delta_x = 2\delta_x$. On peut alors sommer ces objets pour obtenir une mesure qui encode l'ensemble des positions des particules au temps $t$ : \[ \mu_t = \sum_{i=1}^{N} \delta_{x_i(t)}\] Cette identité exprime que, pour tout ensemble $A$, $\mu_t(A)$ est le nombre d'entités qui se trouvent dans la zone $A$ à l'instant $t$.\\
+\\
+Cependant, bien que $\mu_t$ soit définie à partir des $x_i(t)$, l'information contenue dans $\mu$ est dégradée par rapport à la collection $(x_i)$ puisque les labels ont été perdus dans la somme : on ne sait plus qui est où. Plus précisément, si les positions sont distinctes deux à deux, une même mesure $\mu_t$ correspond à un grand nombre de distributions possibles des entités. Formellement, pour toute permutation $\varphi \in S_N$, on a : \[ \sum_{i=1}^{N} \delta_{x_i(t)} = \sum_{i=1}^{N} \delta_{x_{\varphi(i)}(t)}\]\\
+\\
+Ce manque d'information dans le point de vue eulérien empêche souvent le passage du point de vue eulérien au point de vue lagrangien. C'est un problème mal posé, plusieurs scénarios lagrangiens correspondent aux données eulériennes et il n'y a  \textit{a priori} pas un scénario qui soit plus plausible que les autres à moins de rajouter des hypothèses.\\
+\\
+Une autre différence importante entre les deux points de vue se trouve au niveau de la récolte des données. Reprenons le cas de déplacements au sein d'un territoire donné. Pour récupérer des données eulériennes, il est possible d'installer des capteurs infrarouges à chaque porte des trains circulant sur le territoire pour compter les montées et les descentes des voyageurs et il est également possible de compter le nombre de voitures sur un tronçon de route à l'aide des caméras placées sur les routes. Pour récupérer des données lagrangiennes, on peut suivre les usagers tout au long de leur déplacement à l'aide des données GPS de leur téléphone ou bien mettre en place une enquête pour demander directement aux gens quel parcours ils ont empruntés comme cela avait été fait à \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{Rennes en 2023} mais cela demande des dispositifs plus conséquents que pour les données eulériennes. Si bien que dans la réalité, il parfois plus simple de récupérer des données eulériennes que des données lagrangiennes.\\
+\\
+Ainsi, dans la suite de cette section, nous nous intéresserons au passage du point de vue eulérien vers le point de vue lagrangien pour la modélisation des déplacements sur un réseau.
+\section{Réseau linéaire : exemple d'une ligne de bus}
+\subsection{Cadre théorique}
+Nous nous intéressons ici à une ligne de bus avec $N+1$ arrêts numérotés de 0 à $N$ et on s'intéresse seulement au sens croissant des arrêts. Nous supposons que nous avons pu récupérer des données eulériennes sur les déplacements des usagers de la ligne : à chaque arrêt $i \in \dcrochetg 0;N\dcrochetd$, on a compté le nombre de montées $\mu_i$, le nombre de descentes $\nu_i$ et le nombre de personnes à voyager entre l'arrêt $i$ et l'arrêt $i+1$, $\rho_i$. On note alors $\mu, \nu \in \R^{N+1}$ et $\rho \in \R^N$ les vecteurs associés et on considère que $\nu_0 = \mu_N = 0$. Enfin, on peut introduire la quantité $b \in \R^{N+1}$ où $b_i = \mu_i - \nu_i$ le bilan de montée-descente de l'arrêt $i$.\\
+\\
+L'objectif est de retrouver les déplacements de chaque usager à partir de $\mu,\: \nu$ et $\rho$. On souhaite savoir combien de personnes sont montées à l'arrêt $i$ pour descendre à l'arrêt $j$ = $\gamma_{ij}$. On note $\gamma = (\gamma_{ij})$ le plan origine-destination. On définit également le plan origine-destination normalisée $\tilde{\gamma}$ par : \[\tilde{\gamma}_{ij} = \frac{\gamma_{ij}}{\mu_i} \qquad i < N,\quad i<j\leq N\] 
+
+On note $\Gamma$ l'ensemble des plans Originie-Destination $\gamma$ qui vérifient les données de montées et des descentes, $\mu$ et $\nu$ :
+\[
+\Gamma = \{\gamma \quad | \quad \sum^{N}_{i=0} \gamma_{ij} = \nu_j\:\text{ et }  \sum^{N}_{j=0} \gamma_{ij} = \mu_i\}
+\]
+Ainsi défini, $\gamma_i = (\gamma_{ij})_j$ est une loi de probabilité supportée par $\dcrochetg i+1;N\dcrochetd$ et qui décrit la distribution des destinations des voyageurs montés à l'arrêt $i$.\\
+\\
+Tout d'abord, on peut s'intéresser aux liens entre les différentes quantités eulériennes : $\rho, \:\nu,\:\mu$ et $b$.\\
+\\
+\prop \[\forall i \in \dcrochetg0;N-1\dcrochetd, \quad \rho_i = \sum^i_{j=0} bj\]
+\demo\\
+On procède par récurrence.\\
+- Initialisation : au départ de la première station, on a :
+\[ \rho_0 = \mu_0 = \mu_0 - \nu_0 = b_0
+\]
+- Hérédité : supposons l'hypothèse vraie pour un $i \in \dcrochetg0;N-1\dcrochetd$. Montrons qu'elle est vraie à l'étape $i+1$ :\\
+\space
+$\rho_{i+1}$ = les voyageurs entre $i$ et $i+1$ + les voyageurs montants en $i+1$ - les voyageurs descendants en $i+1$ = $\rho_i + \mu_{i+1} - \nu_{i+1} = \sum^{i+1}_{j=0} bj$.\\
+\\
+\prop $\:$On fixe $\rho_{-1} = \rho_N = 0$. On a alors :
+\[\forall i \in \dcrochetg0;N\dcrochetd, \quad b_i = \rho_i - \rho_{i-1}\]
+\demo \\$\: b_i = $ la différence entre les voyageurs partant de $i$ et ceux partis de $i-1$ arrivés en $i = \rho_{i-1} - \rho_i$.\\
+\\
+On a également une relation entre $\gamma, \mu$ et $b$ sous la forme $G\mu = b$ où G est une matrice qui dépend du plan normalisé $\Tilde{\gamma}$.\\
+\\
+\prop\\
+\begin{adjustwidth}{-2cm}{-2cm}
+\[
+\begin{pmatrix}
+\sum^N_{j=1} \Tilde{\gamma}_{0j} & 0 & \cdots & \cdots & \cdots & \cdots & 0\\
+- \Tilde{\gamma}_{01} & \sum^N_{j=2} \Tilde{\gamma}_{1j} & 0 & \cdots & \cdots & \cdots & 0\\
+\vdots & \ddots & \ddots   & 0 &\cdots& \cdots & \vdots  \\
+\textcolor{red}{- \Tilde{\gamma}_{0i}} & \textcolor{red}{\cdots} & \textcolor{red}{- \Tilde{\gamma}_{i-1i}} & \textcolor{blue}{\sum^N_{j=i+1} \Tilde{\gamma}_{ij}} & 0 & \cdots & 0 \\
+\vdots &  & &  \ddots & \ddots & \cdots  &\vdots \\
+- \Tilde{\gamma}_{0N-1} & \cdots & \cdots & \cdots & \cdots & \Tilde{\gamma}_{N-1N} & 0\\
+- \Tilde{\gamma}_{0N} & \cdots & \cdots & \cdots  & \cdots & - \Tilde{\gamma}_{N-1N} & 0\\
+\end{pmatrix}
+\begin{pmatrix}
+\mu_0\\
+\vdots\\
+\vdots\\
+\mu_i\\
+\vdots\\
+\mu_{N-1}\\
+\mu_N\\
+\end{pmatrix}
+=
+\begin{pmatrix}
+b_0\\
+\vdots\\
+\vdots\\
+b_i\\
+\vdots\\
+b_{N-1}\\
+b_N\\
+\end{pmatrix}
+\]
+\end{adjustwidth}
+\demo \[b_i = \mu_i - \nu_i =  \sum^N_{j=i+1} \gamma_{ij} - \sum^{i-1}_{j=0} \gamma_{ji} = \sum^N_{j=i+1} \Tilde{\gamma}_{ij}\times\mu_i\: - \:\sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j =  (\textcolor{blue}{\sum^N_{j=i+1} \Tilde{\gamma}_{ij}})\times\textcolor{blue}{\mu_i} \: \; \textcolor{red}{- \: \sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j} \]
+\\
+Mais avec nos données eulériennes, on ne connait pas précisément $\gamma$ ni $\Tilde{\gamma}$, néanmoins nous avons plusieurs informations. On se concentrera sur $\gamma$ :\\
+\begin{itemize}
+    \item[•] On étudie la ligne de bus dans un seul sens (ici dans le sens des indices croissants). Donc pour tout $i \in \dcrochetg 0;N\dcrochetd$ et pour tout  $j < i$, $\: \gamma_{ij} = 0$. La partie inférieure gauche de la matrice est nulle.\\
+    \item[•] Un usager ne peut pas monter et descendre à la même station, la diagonale est donc nulle.\\
+    \item[•] Pour toute colonne d'indice $j, \: \sum^{N}_{i=0} \gamma_{ij} = \nu_j$. On peut en déduire que $\gamma_{01} = \nu_1$.\\
+    \item[•] Pour toute ligne d'indice $i, \: \sum^{N}_{j=0} \gamma_{ij} = \mu_i$. On peut en déduire que $\gamma_{N-1N} = \mu_N$.\\
+\end{itemize}
+On a donc une matrice de la forme suivante :
+\begin{adjustwidth}{-2cm}{-2cm}
+\[\gamma = 
+\begin{pmatrix}
+0 & \nu_1 &\gamma_{02} & \cdots &  \cdots &\gamma_{0N} & | &\sum \gamma_{0j} = \mu_0 \\
+\vdots & \ddots & \gamma_{12} & \ddots & &\vdots & | &\sum \gamma_{1j} = \mu_1 \\
+\vdots & & \ddots & \ddots & \ddots & \vdots &| &\sum \gamma_{ij} = \mu_j\\
+\vdots &  & & \ddots & \gamma_{N-2N-1}&\gamma_{N-2N}& |& \sum \gamma_{N-2j} = \mu_{N-2}\\
+\vdots &  & & & \ddots &\mu_{N-1}& |& \sum \gamma_{N-1j} = \mu_{N-1}\\
+0 & \cdots & \cdots & \cdots & \cdots & 0& | &\sum \gamma_{Nj} = \mu_N\\
+----- & -----& -----&-----&-----&-----&-\\
+\sum \gamma_{i0} = \nu_0 & \sum \gamma_{i1} = \nu_1 & \sum \gamma_{i2} = \nu_2 & \sum \gamma_{ij} = \nu_j & \sum \gamma_{iN-1} = \nu_{N-1} & \sum \gamma_{iN} = \nu_N
+\end{pmatrix}\]
+\end{adjustwidth}
+
+Pour trouver les valeurs des termes $\gamma_{ij}$ restants, on peut mettre en place différents algorithmes, nous allons en voir deux.
+\subsection{Algorithme naïf}
+Le premier algorithme mis en place a été un algorithme "naturel", celui fait pour se faire la main sur un petit exemple avec seulement quelques arrêts et de petites valeurs. On suppose que les valeurs de $\mu,\:\nu,\:\rho$ sont valides : il y a au moins une matrice $\gamma$ qui correspond à ces données.\\
+\\
+\begin{algorithm}
+\caption{Algorithme de remplissage de matrice}
+\begin{algorithmic}
+    \State Initialiser une matrice $M$ remplie de 0.
+    \If{la matrice est correctement remplie}
+        \State La matrice nulle est la seule solution, arrêt.
+    \Else
+        \State Faire une hypothèse sur $\gamma_{02}$, commencer par $\gamma_{02} = 0$.
+        \State (*) On regarde ce que cela implique : y a-t-il des cases dont on est sûr de connaitre la valeur à partir des hypothèses sur la valeur de la somme des colonnes et des lignes ? On remplit alors ces cases avec les valeurs correspondantes en faisant attention aux contradictions (ex : une case doit valoir 2 pour que la condition sur la somme de la ligne soit vérifiée mais elle doit valoir 3 pour que la condition sur la colonne soit vérifiée).
+        \If{on a une contradiction}
+            \State On revient à l’hypothèse précédemment faite (et on enlève toutes les implications que cette hypothèse avait entrainées) et si on le peut, on augmente de 1 la valeur de l’hypothèse et on reprend à (*). Si ça n’est pas possible, on revient encore à l’hypothèse d’avant et ainsi de suite jusqu’à ce qu’on puisse augmenter une hypothèse de 1 pour reprendre à (*) et si on ne peut pas trouver de telle hypothèse, arrêt.
+        \Else
+            \If{la matrice est correctement remplie}
+                \State On sauvegarde la matrice
+                \State On revient à l’hypothèse précédemment faite (et on enlève toutes les implications que cette hypothèse avait entrainées) et si on le peut, on augmente de 1 la valeur de l’hypothèse et on reprend à (*). Si ça n’est pas possible, on revient encore à l’hypothèse d’avant et ainsi de suite jusqu’à ce qu’on puisse augmenter une hypothèse de 1 pour reprendre à (*) et si on ne peut pas trouver de telle hypothèse, arrêt.
+             \Else
+                \State On fait une nouvelle hypothèse sur la prochaine case non connue (on progresse ligne par ligne et colonne par colonne) et on reprend à (*).
+            \EndIf
+        \EndIf
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+Voici un exemple pour une ligne de bus à 5 arrêts.\\
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=12cm]{Images/Passage_euler_lagrange/graphe_euler_5arrets.png}
+    \caption{Représentation ligne de bus à 5 arrêts à partir de données eulériennes}
+    \label{fig:graphe_5arrets}
+\end{figure}
+\[ \text{On a : }
+\mu = (2,\:3,\:1,\:2,\:0), \quad \nu = (0,\:1,\:2,\:2,\:3), \quad \rho = (2,\:1,\:2,\:2,\:3)
+\]
+La première matrice $\gamma$ trouvée par l'algorithme est la suivante :\\
+
+\begin{minipage}{.1\textwidth}%
+\begin{adjustwidth}{-2cm}{-1cm}
+
+ \[\gamma_1 = 
+\begin{pmatrix}
+0 & 1 & \textcolor{red}{0} & \textcolor{cyan}{0} & \textcolor{teal}{1} & | & 2 \\
+0 & 0 & \textcolor{purple}{2} & \textcolor{green}{1} & \textcolor{blue}{0} & | & 3 \\
+0 & 0 & 0 & \textcolor{olive}{1} & \textcolor{blue}{0}& | & 1\\
+0 & 0 & 0 & 0 & 2 & | &  2\\
+0 & 0 & 0 & 0 & 0 & | &  0\\
+--&--&--&--&--\\
+0 & 1 & 2 & 2 & 3 
+\end{pmatrix}\]
+\end{adjustwidth}
+\end{minipage}%
+\hfill
+\begin{minipage}{0.6\textwidth}%
+\begin{itemize}
+    \item On suppose que \textcolor{red}{$\gamma_{02}$ vaut 0}. Or, $\textcolor{red}{\gamma_{02}} + \gamma_{12} = 2$ donc \textcolor{purple}{$\gamma_{12}$ vaut 2}.\\
+    \\
+    La prochaine case inconnue est 03.
+    \item On suppose que \textcolor{cyan}{$\gamma_{03}$ vaut 0}.\\
+    Or, $\textcolor{cyan}{\gamma_{03}} + \gamma_{04} = 1 $ donc \textcolor{teal}{$\gamma_{04}$ vaut 1}.\\
+    Or, $\textcolor{teal}{\gamma_{04}} + \gamma_{14} + \gamma_{24} + \gamma_{34} = 3$ donc \textcolor{blue}{$\gamma_{14} = \gamma_{24} = 0$}.\\
+    Or, $\textcolor{purple}{\gamma_{12}} + \gamma_{13} + \textcolor{blue}{\gamma_{14}} = 3$ donc \textcolor{green}{$\gamma_{13}$ vaut 1}.\\
+    Or, \textcolor{cyan}{$\gamma_{03}$} + \textcolor{green}{$\gamma_{13}$} + $\gamma_{23} = 2$ donc \textcolor{olive}{$\gamma_{23} = 1$}
+\end{itemize}
+\end{minipage}%
+\newline
+\newline
+\vspace{1cm}
+Voici les 4 autres matrices $\gamma$ qui vérifient les conditions sur $\mu,\:\nu$ et $\rho$ :\\
+\begin{minipage}{.2\textwidth}%
+  \[\gamma_2 = 
+\begin{pmatrix}
+0 & 1 & 0 & 1 & 0\\
+0 & 0 & 2 & 0 & 1 \\
+0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 2 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\]
+\end{minipage}%
+\hfill
+\begin{minipage}{1\textwidth}%
+ \[\gamma_3 = 
+\begin{pmatrix}
+0 & 1 & 0 & 1 & 0\\
+0 & 0 & 2 & 1 & 0 \\
+0 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 2 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\]
+\end{minipage}%
+\newline
+\newline
+\begin{minipage}{.2\textwidth}%
+ \[\gamma_4 = 
+\begin{pmatrix}
+0 & 1 & 1 & 0 & 0 \\
+0 & 0 & 1 & 1 & 1 \\
+0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 2 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\]
+\end{minipage}%
+\hfill
+\begin{minipage}{1\textwidth}%
+ \[\gamma_5 = 
+\begin{pmatrix}
+0 & 1 & 1 & 0 & 0\\
+0 & 0 & 1 & 2 &  0\\
+0 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 2 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\]
+\end{minipage}%
+\newline
+\newline
+
+\subsection{Algorithme de recherche exhaustive}
+Le deuxième algorithme est un algorithme de recherche exhaustive (backtracking) qui est assez proche de l'algorithme naïf. Il consiste à explorer toutes les configurations possibles et à retenir celles qui satisfont les conditions. Voici le code Python de l'algorithme, on peut retrouver le code entier en annexe du rapport ou sur \href{https://github.com/GaryTheCaptn/graphes_stage}{GitHub}.
+\begin{lstlisting}
+def euler_to_lagrange(m, v):
+    """
+    :param m: une liste d'entiers, les montees a chaque arret
+    :param v: une liste d'entiers, les descentes a chaque arret
+    :return: une liste contenant toutes les matrices OD correspondant aux donnees de montees et de descentes
+    """
+    n = len(m)
+    resultats = []
+
+    # Fonction recursive pour trouver les grilles
+    def backtrack(grille, m_rest, v_rest, ligne, col):
+        # Cas 1 : On a rempli la derniere cellule. On verifie si la grille est valide
+        #         Si elle est valide, on la sauvegarde dans les resultats.
+        if ligne == n:
+            if all(sum(grille[i]) == m[i] for i in range(n)) and all(
+                    sum(grille[i][j] for i in range(n)) == v[j] for j in range(n)):
+                resultats.append([row[:] for row in grille])
+            return
+
+        # Cas 2 : On a rempli la derniere colonne de la ligne actuelle. On passe a la ligne suivante
+        if col == n:
+            # On appelle la fonction backtrack pour continuer a remplir la matrice
+            # en se placant sur la ligne +1 et sur la premiere colonne
+            backtrack(grille, m_rest, v_rest, ligne + 1, 0)
+            return
+
+        # Cas 3 : On est sur la diagonale ou la partie inferieure gauche, la valeur doit etre 0.
+        if ligne >= col:
+            grille[ligne][col] = 0  # On met le coef a 0
+            backtrack(grille, m_rest, v_rest, ligne, col + 1)  # On continue a remplir la grille.
+
+        # Autre cas : On appelle la fonction backtrack pour chaque valeur que peut prendre la cellule
+        else:
+            # On definit la valeur maximale que peut prendre la cellule a partir de m_rest et v_rest.
+            max_val = min(m_rest[ligne], v_rest[col])
+            for val in range(max_val + 1):
+                grille[ligne][col] = val
+                # On modifie les valeurs de m_rest et v_rest pour remplir les cellules restantes
+                # Et respecter les conditions sur les sommes de lignes et de colonnes
+                m_rest[ligne] -= val
+                v_rest[col] -= val
+
+                # On appelle la fonction backtrack recursive pour remplir la cellule suivante
+                backtrack(grille, m_rest, v_rest, ligne, col + 1)
+
+                # On retablie les valeurs de m_rest et v_rest pour tester la nouvelle possibilite
+                m_rest[ligne] += val
+                v_rest[col] += val
+                grille[ligne][col] = 0
+
+    # On initialise une grille vide
+    grille_vide = [[0] * n for _ in range(n)]
+
+    # On appelle la fonction recursive backtrack pour remplir la grille et tester les possibilites.
+    backtrack(grille_vide, m.copy(), v.copy(), 0, 0)
+
+    return resultats
+\end{lstlisting}
+Pour le réseau de bus à 5 arrêts (\ref{fig:graphe_5arrets}), on retrouve bien les mêmes cinq matrices Origine-Destination qu'avec l'algorithme naïf.\\
+\\
+On a également pu tester l'algorithme sur d'autres petites lignes de bus. Un autre exemple avec 6 arrêts (\ref{graphe_euler_6arrêts}) et des valeurs un tout petit peu plus grandes :\\
+\[ 
+\mu = (5,\:4,\:6,\:3,\:1,\:0), \quad \nu = (0,\: 2,\: 4, \:3,\: 5,\: 5)
+\]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=12cm]{Images/Passage_euler_lagrange/graphe_eulérien_6arrêts.png}
+    \caption{Représentation ligne de bus à 6 arrêts à partir de données eulériennes}
+    \label{graphe_euler_6arrêts}
+\end{figure}
+Avec l'algorithme exhaustif, on obtient 200 matrices Origine-Destination qui correspondent aux données de montées et descentes. On voit que le nombre de matrices augmente très rapidement dès lors que l'on augmente le nombre d'arrêts et les valeurs dans les vecteurs $\mu$ et $\nu$.\\
+\\
+L'augmentation des valeurs et du nombre d'arrêts entraîne également l'augmentation du nombre de possibilités de matrices et donc le temps de calcul. La complexité de l'algorithme exhaustif est exponentielle dans le pire cas. En effet :\\
+\\
+Pour ligne à $N$ arrêts, il faut remplir une matrice Origine-Destination de taille $N^2$. Pour chaque coefficient $\gamma_{ij}$, il faut tester toutes les valeurs possibles entre 0 et $min(m_i;v_j)$ sauf pour ceux qui sont fixées à zéro qui représentent environ la moitié des cellules. La complexité totale peut donc être approximée par $O(k^{N^2/2})$ où $k$ est le nombre moyen de valeurs possibles par cellules.\\
+\\
+Ainsi, avec cet algorithme, on est assez vite limités par les capacités de calcul de la machine. On doit se limiter à quelques arrêts avec peu de voyageurs, ce qui n'est pas très adapté à une utilisation réelle.
+\section{Sélection d'un plan Origine-Destination}
+Les deux algorithmes décrits ci-dessus, renvoient l'ensemble des matrices correspondantes, mais il est intéressant de se demander si certains scénarios sont plus plausibles que d'autres et comment les sélectionner. Pour cela, on s'intéresse à la notion d'entropie.\\
+\\
+\defin\\
+On considère une variable aléatoire discrète $p$ qui prend ses valeurs dans un ensemble de cardinal n. La loi de p est décrite par :
+\[p = (p_1,p_2,...,p_n),\quad p_i \geq 0,\quad \sum p_i = 1\]
+On définit l'entropie de la variable aléatoire $p$ comme
+\[S(p) = \sum p_i log(p_i)\]
+\rmq $\:$
+Il existe également une définition de l'entropie avec un signe $-$ .\\
+\\
+Pour une ligne de bus donnée, on introduit $K = \sum_{i,j} \gamma_{ij} $ le nombre de voyageurs total. On peut alors voir le plan Origine-Destination $\gamma$ comme une variable aléatoire dont les issues sont les trajets $i \longrightarrow j$ et dont la loi de probabilité est décrite par :
+\[
+\mathbb{P}(i \longrightarrow j) = \Bar{\gamma}_{ij} = \frac{\gamma_{ij}}{K}
+\]
+\prop $\:$ L'entropie d'un plan Origine-Destination $\gamma$ est donc :
+\[S(\gamma) = \sum_{i,j}\Bar{\gamma}_{ij}log(\Bar{\gamma}_{ij})
+\]
+\\
+On peut interpréter l'entropie comme une mesure du désordre ou, dans notre cas, une mesure de la diversité des déplacements des voyageurs. Une entropie minimale correspond à une répartition relativement uniforme entre les trajets possibles, il est difficile de prédire le trajet que fera un voyageur. Au contraire, une grande entropie traduit la présence de trajets plus populaires que d'autres.\\
+\\
+Nous faisons l'hypothèse qu'il y a une répartition uniforme des trajets et donc on cherche la matrice OD qui minimise l'entropie.\\
+ \\
+\prop$\:$ C'est un problème de minimisation d'une fonctionnelle strictement convexe sur un compact convexe, il admet donc une unique solution. (cf. section \ref{theorie optimisation})
+\subsection{Calcul de l'entropie sur l'ensemble des solutions}
+La première approche envisagée a été de calculer l'entropie de toutes les matrices Origine-Destination correspondant à des vecteurs montées et descentes donnés et de finalement renvoyer la matrice minimisant l'entropie. Pour cela, on a implémenté une fonction Python.\\
+\\
+Pour la ligne de bus à 5 arrêts (\ref{fig:graphe_5arrets}), c'est la matrice suivante qui minimise l'entropie :
+ \[\gamma_1 = 
+\begin{pmatrix}
+0 & 1 & 1 & 0 & 0\\
+0 & 0 & 1 & 1 &  1\\
+0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 2 \\
+0 & 0 & 0 & 0 & 0 
+\end{pmatrix}\]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=12cm]{Images/Passage_euler_lagrange/graphe_lagrangien_5arrets.png}
+    \caption{Représentation ligne de bus à 5 arrêts minimisant l'entropie}
+    \label{graphe_lagrange_5arrêts}
+\end{figure}
+Les valeurs et la longueur de cette ligne étant très petites, on ne peut pas en tirer grand-chose mais on voit apparaite. La figure (\ref{graphe_lagrange_5arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.\\
+\\
+Pour la ligne à 6 arrêts (\ref{graphe_euler_6arrêts}), c'est la matrice suivante qui minimise l'entropie.  La figure (\ref{graphe_lagrange_6arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.
+ \[\gamma = 
+\begin{pmatrix}
+0 & 2 & 2 & 0 & 0 & 1\\
+0 & 0 & 2 & 1 &  1 & 0\\
+0 & 0 & 0 & 2 & 2 & 2 \\
+0 & 0 & 0 & 0 & 2 & 1 \\
+0 & 0 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}\]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=12cm]{Images/Passage_euler_lagrange/graphe_lagrangien_6arrets.png}
+    \caption{Représentation ligne de bus à 6 arrêts minimisant l'entropie}
+    \label{graphe_lagrange_6arrêts}
+\end{figure}
+Dans ce cas, on voit apparaitre clairement la forte répartition des trajets.\\
+\\
+L'avantage de cette méthode est qu'elle renvoie une matrice correcte (\textit{ie} qui respecte totalement les contraintes de montées et de descentes) et qu'elle est composée d'entiers. Un important désavantage est qu'elle nécessite d'avoir au préalable calculé l'ensemble des matrices correspondantes, cependant, nous avons vu précédemment que les méthodes pour faire cela était très lentes. Cela peut donc fonctionner pour de petites lignes avec de petites valeurs (moins d'une dizaine d'arrêts et une dizaine de passagers) mais n'est pas pertinente au-delà. Il est donc naturel de vouloir calculer directement la matrice minimisant l'entropie.
+\subsection{Recherche par des méthodes d'optimisation}
+Pour cela, nous allons utiliser des méthodes dites d'optimisation et plus précisément de minimisation que nous allons appliquer à l'entropie.\\
+\\
+Pour une ligne de bus à $N$ arrêts, il y a $d = \frac{N(N-1)}{2}$ données à trouver (matrice triangulaire supérieure à diagonale vide). La fonction à minimiser est donc :
+\[\begin{array}{rcl}
+S:\R^d&\to& \R\\
+x &\mapsto &\sum_{i=1}^d x_ilog(x_i)
+\end{array}
+\]
+Le problème de minimisation est donc :
+\[
+\inf_{x\in \R^d} \: \: S(x) \quad (P_S)
+\]
+Nous allons tout d'abord poser un cadre théorique de la minimisation puis nous l'appliquerons à notre problématique.
+\subsubsection{Théorie}
+\label{theorie optimisation}
+Cette section se base sur le cours d'optimisation de Quentin Marigot \cite{poly_quentin_marigot}.\\
+\\
+\defin$\:$\\
+Soit $f \in C^1(\Rd)$,\\
+1. On appelle minimiseur global (ou minimiseur) tout élément $x^* \in \R^d$ vérifiant $f(x^*) = \inf_{R^d}f$. On note $arg \min_{\Rd} f$ l'ensemble des minimiseurs de $f$ (qui peut être vide) \textit{ie} : 
+\[
+arg \min_{R^d} f = \{ x \in \Rd | f(x) = \inf_{\Rd} f\}
+\]
+2. On appelle suite minimisante pour (P) toute suite $x^{(0)}, ..., x^{(k)}$, ... d'éléments de $\Rd$ telle que $\lim_{k\to+\infty} f(x^{(k)}) = \inf_{x \in \Rd} f(x)$.\\
+\\
+Il existe plusieurs méthodes qui permettent alors de résoudre des problèmes de minimisation pour des problèmes sans contraintes : gradient à pas fixe, à pas optimal, gradient préconditionné à rebroussement, méthode de Newton, etc. qui ne seront pas développées ici.\\
+\\
+Cependant, dans notre cas, les matrices Origine-Destination recevables sont contraintes par les données de montées et de descentes. Nous allons donc nous intéresser aux méthodes d'optimisation sous contraintes.\\
+\\
+Pour ce type de problème, on définit les contraintes par des inégalités : des fonctions convexes $c_1, \dots, c_l \in C^1(\Rd)$. On définit alors l'ensemble $K \subseteq \Rd$ convexe fermé : 
+\[K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}\] 
+On appelle chacune des fonctions $c_1, \dots, c_l$ une contrainte du problème et on note alors le problème d'optimisation pour une fonction $f$ convexe comme :
+\[
+P := \min_{c_1(x), \dots, c_l(x)} f(x)
+\]
+\prop $\:$ (Existence d'une solution)\\
+Un problème d'optimisation sous contraintes tel que définit précédemment admet une solution si l'une des conditions suivantes est vérifiée :\\
+1. $K$ est compact, non vide et $f$ est continue.\\
+2. $K$ est fermé, non vide, $f$ est continue et $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$\\
+\\
+\prop $\:$(Unicité) \\
+Si la fonction $f$ est strictement convexe et si l'ensemble $K$ est convexe, alors le problème d'optimisation admet au plus une solution.\\
+\\
+\prop $\:$ En notant $(e_i)_{1\leq i,j\leq d}$ est la base canonique de $\Rd$, si $\forall x \in \Rd, \quad D^2f(x) = (\frac{\partial^2f}{\partial e_i \partial e_j}(x))_{1\leq i,j\leq d}$ (héssienne de f) est définie positive, alors $f$ est strictement convexe.\\
+\\
+Pour faire la démonstration de cette proposition, on va utiliser les quatre lemmes suivants :\\
+\\
+\lemme $\:$ (1) Soit $f \in C^1(\Rd).$ Etant donnés $x \in \Omega$ et $v\in\Rd$, on définit $x_t = x + tv$ et $g(t) = f(x_t)$. Alors,
+\[
+g'(t) = <\nabla f(x_t)|v>
+\]
+\lemme $\:$ (2) Soit $\Omega \subset \Rd$ ouvert, $f \in C^2(\Omega),\: x \in \Omega, \: v \in \Rd$ et $g\:t\:\mapsto f(x_t)$ où $x_t = x + tv$. Alors,
+\[
+g''(t) = <D^2f(x_t)v|v>
+\]
+\demo $\:$ (2) On fait le calcul en coordonnées, en notant $(e_k)_k$ la base canonique :
+\[
+g(t) = f(x + \sum_xtv_ke_k)
+\]
+\[
+g'(t) = \sum_i v_i\frac{\partial f}{\partial e_i}(x + \sum_ktv_ke_k) = <\nabla f(x_t)|v>
+\]
+\[
+g''(t) = \sum_i\sum_jv_iv_i \frac{\partial^2f}{\partial e_j \partial e_i}(x + \sum_ktv_ke_k) = <D^2f(x_t)v|v> \\
+\qed
+\]
+\lemme $\:$ (Taylor-Lagrange). Soir $f \in C^2(\Rd),\: x, v \in \Rd$ et $x_t = x + tv$. Alors, 
+\[
+\forall t \geq 0, \exists s \in [0,t],\quad f(x_t) = f(x) + t <\nabla f(x) | v> + \frac{t^2}{2}<D^2f(x_s)v|v>.
+\]
+\lemme $\:$ (3) Les propositions suivantes sont équivalentes :\\
+1. f est (strictement) convexe sur $\Rd$\\
+2.
+\[
+\forall x,y \in \Rd,\text{ la fonction } g : t\in[0,1] \mapsto f((1-t)x + ty) \text{ est (strictement) convexe.}
+\]
+3.
+\[
+\forall x,y \in \Rd, \: f(y) \geq f(x) + <y-x|\nabla f(x)> \text{ (stricetement convexe si inégalité stricte).}
+\]
+4. 
+\[
+\forall x,y \in \Rd, \: <\nabla f(x) - \nabla f(y)|x-y>\: \geq 0 \text{ (stricetement convexe si inégalité stricte).}
+\]
+\demo $\:$ (3)\\
+1. $\Longleftrightarrow$ 2. par application directe de la définition.\\
+2. $\Longrightarrow$ 3. Soit $x,y \in \Rd$ et $g : t \mapsto f(x_t)$ où $x_t = (1-t)x + tv = x + t(y-x)$ qui est convexe par hypothèse. Par convexité, on a $g(t) \leq g(0) + tg'(0)$ soit par le lemme 1 :\\
+$f(x) + <\nabla f(x) | y-x> \leq f(y)$\\
+3. $\Longrightarrow$ 4. Il suffit de sommer l'inégalité (3) et la même inégalité où l'on inverse les rôles de $x$ et de $y$.\\
+4. $\Longrightarrow$ 2. Soit encore $g : t \mapsto f(x_t)$. Comme $g'(t) = <\nabla f(x_t)|y-x>$ par le lemme (1), l'inégalité 4. appliquée en $x_s$ et $x_t$ (où t>s) nous donne 
+\[
+g'(t) -g'(s) = <\nabla f(x_t) - \nabla f(x_s) | y-x> = \frac{1}{t-s}<\nabla f(x_t) - \nabla f(x_s)|x_t - x_s> \geq 0.
+\]
+et $g'$ est donc croissante sur [0,1]. Ainsi, g est convexe. $\qed$\\
+\\
+\demo $\:$ (proposition) On considère $x,y \in \Omega$ et $g(t) = f(x_t)$ où $x_t = (1-t)x + ty$. Alors, par le lemme (2) avec $v = y-x$, on a $g''(t) = <D^2f(x_t)(y_x)|(y-x)>$ est strictement positif par hypothèse, donc par le lemme (Taylor-Lagrange) on a :
+\[ g(1) = g(0) + g'(0= + \frac{s^2}{2}g''(s) > g(0) + g'(0).\]
+Or, $f(y) = g(1)$ et $f(x) = g(0)$. Donc, on a, $f(y) > f(x) + <\nabla f(x)|y-x>$ et donc d'après le lemme (3) donc $f$ est strictement convexe. $\qed$\\
+\\
+\lemme $\:$ Si les fonctions $c_1, \dots, c_l \: \Rd \to \R$ sont continues et convexes, alors l'ensemble $K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}$ est fermé et convexe.\\
+\\
+\demo  $\:$\\
+K est fermé :\\
+Soit $(x_n)$ une suite d'élément de $K$ convergent vers une limite $x$, montrons que $x \in K$. Par hypothèse, comme $x_n \in K, \: c_i(x_n) \leq 0, \: \forall i \in \{1, \dots, l \}$. En passant à la limite $ n \to +\infty$ en utilisant la continuité de $c_i$, on en déduit que $c_i(x) \leq 0, \forall i \in \{1, \dots, l \}$. Donc $x$ appartient à $K$ et donc $K$ est fermé.\\
+\\
+K est convexe :\\
+Soient $x,y \in K$ et $x_t = (1-t)x + ty$. Comme $x,y \in K$, on a pour tout $i \in \{1, \dots, l \}, \: c_i(x) \leq 0 \text{ et } c_i(y) \leq 0$. Pour tout $t\in [0,1]$, on a donc :
+\[
+c_i(x_t) \leq (1-t)c_i(x) + tc_i(y) \leq 0
+\]
+Donc $x_t$ appartient à $K$ et donc $K$ est convexe. $\qed$\\
+\\
+\underline{Méthode pour trouver le minimiseur :}\\
+Pour résoudre les problèmes d'optimisation sous contraintes $min_K f$ où $K = \{x \quad | \quad \forall i, \: c_i(x) \leq 0\}$, une idée peut être de se ramener à un problème d'optimisation sans contraintes : 
+\[
+\min_{\Rd} \: f_\epsilon\] 
+où est $f_\epsilon$ la somme de $f$ et de termes qui vont exploser lorsque les conditions ne seront pas vérifiées. Précisément, pour $\epsilon > 0$, on pose :
+\[
+P_\epsilon = \min_{x\in\Rd} f_\epsilon(x) \text{ où } f_\epsilon(x) = f(x) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x),0)^2.
+\]
+Dans cette formulation du problème, les points $x \in \Rd$ tels que $c_i(x) > 0$ sont pénalisés au sens où si $\epsilon$ est très petit alors $\frac{1}{\epsilon}max(c_i(x),0)^2$ peut devenir très grand, ce qui va dissuader le choix de ce point dans le problème d'optimisation sur $\Rd$ :
+\[
+\forall x \in \Rd, \: \lim_{\epsilon \to 0}\frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x),0)^2 = \left\{
+    \begin{array}{ll}
+        0 & \mbox{si } c_i(x) \leq 0 \\
+        +\infty & \mbox{sinon.}
+    \end{array}
+\right.
+\]
+\prop $\:$ Soit $f \in C^0(\Rd)$ strictement convexe et vérifiant $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$, alors :\\
+1. Les problèmes $P_\epsilon$ et $P$ admettent chacun un unique minimiseur, noté $x^*$ et $x^*_\epsilon$.\\
+2. $\lim_{\epsilon\to 0} x^*_\epsilon = x^*$\\
+\\
+\demo $\:$\\
+1. L'existence d'une solution au problème d'optimisation sans contraintes $P_\epsilon$ se déduit du fait que $f_\epsilon$ est continue et que $\lim_{\lVert x\lVert \to +\infty} f_{\epsilon}(x) \geq \lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$. Tandis que l'existence de solution au problème avec contraintes $P$ se déduit du fait que $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$ et que $K$ est fermé (lemme précédent). Pour l'unicité de la solution au problème P, il suffit de remarquer que $f$ est strictement convexe (par hypothèse) et que $K$ est convexe (lemme précédent à nouveau). Enfin, pour l'unicité de la solution du problème $P_\epsilon$ il faut montrer que $f_\epsilon$ est strictement convexe. Soient $x,y \in \Rd, t \in [0,1]$ et $x_t = (1-t)x + ty$. Alors,
+\[
+c_i(x_t) \leq (1-t)c_i(x) + tc_i(y)
+\]
+de sorte que :
+\[
+max(c_i(x_t),0) \leq max((1-t)c_i(x) + tc_i(y),0) \leq (1-t)max(c_i(x),0) + tmax(c_i(y),0)
+\]
+puis en utilisant la convexité de $r \in \R \mapsto r^2$, on a : \[
+max(c_i(x_t),0)^2 \leq [(1-t)max(c_i(x),0) + tmax(c_i(y),0)]^2\\
+\leq (1-t)max(c_i(x),0)^2 + tmax(c_i(y),0)^2
+\]
+On en déduit que les fonctions $x \mapsto max(c_i(x),0)^2$ sont convexes et $f_\epsilon$ est donc strictement convexe comme combinaison linéaire à coefficients positifs de fonctions convexes et d'une fonction strictement convexe.\\
+\\
+2. Soit $x^* \in K$ le minimiseur de $P$. Alors comme $c_i(x^*) \leq 0$, on a :
+\[
+P_\epsilon \leq f_\epsilon(x^*) = f(x^*) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x^*),0)^2 = f(x^*) = P
+\]
+Ainsi, 
+\[
+P_\epsilon = f(x_\epsilon^*) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x_\epsilon^*),0)^2
+\leq P\]
+Comme $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$, la fonction f est minorée par $m \in \R$. On en déduit donc que :
+\[
+\forall i \{1,...,l\}, \frac{1}{\epsilon}max(c_i(x^*_\epsilon),0) \leq \frac{1}{\epsilon} \sum^{l}_{j = 1}max(c_j(x_\epsilon^*),0)^2 \leq P - f(x^*_\epsilon) \leq P - m 
+\]
+ou encore 
+\[
+max(c_i(x^*_\epsilon),0)^2 \leq \epsilon(P-m).
+\]
+Soit $\Bar{x}$ une valeur d'adhérence de la suite $x^*_\epsilon$ lorsque $\epsilon \to 0$. Alors, par continuité,
+\[
+max(c_i(\Bar{x}),0)^2 \leq 0
+\]
+ce qui montre que $\Bar{x} \in K$. De plus, pour tout $\epsilon > 0$, $f(x_\epsilon) \leq P_\epsilon \leq P$ de sorte que $f(\Bar{x}) \leq P$. On en déduit que $\Bar{x}$ minimise $f$ sur $K$, soit $\Bar{x} = x^*$. Pour conclure, on remarque que la suite $(x^*_\epsilon)$ est bornée et admet une valeur d'adhérence de sorte que $\lim_{\epsilon \to 0} x^*_\epsilon = x^*$. $\qed$
+
+\subsubsection{Application à l'entropie}
+Vérifions maintenant que le problème de minimisation de l'entropie avec les contraintes de montées et de descentes se trouvent dans le cadre théorique décrit précédemment.\\
+\\
+Tout d'abord, vérifions que $S : x \in \Rd \mapsto \sum_{i=1}^dx_ilog(x_i)$, est $C^2$, strictement convexe et vérifie $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$.\\
+\\
+1. Continuité :\\
+La fonction $log$ est $C^{\infty}$ sur $\R^+_*$.\\
+2. Stricte convexité :\\
+Pour cela, nous allons utiliser la première proposition de la section \ref{theorie optimisation} en étudiant la hessienne de $S, \quad \forall i, j \in \{ 1, ...,d\} :$
+\[
+i \neq j : \: \frac{\partial^2S}{\partial_i\partial_j}(x) = 0
+\]
+\[
+i = j : \: \frac{\partial^2S}{\partial_i^2}(x) = \frac{1}{x_i}
+\]
+Donc la hessienne de $D^2S(x)$ pour $x \in \Rd$ est une matrice diagonale, donc le spectre est $\{\frac{1}{x_1},..., \frac{1}{x_d}\}$ tous non-nuls donc $D^2S(x)$ est définie positive et donc $S$ est strictement convexe. \\
+3. Limite :\\
+\[ \forall x_i \in \R, \lim_{x_i \to +\infty} x_ilog(x_i) = +\infty \]
+donc  on a $\forall x \in \Rd \lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$\\
+\\
+Transformons les contraintes de montées et de descente en fonctions convexes et continues $c_i : x \in \Rd \mapsto \R$.\\
+\begin{itemize}
+    \item On a tout d'abord la contrainte de la définition du logarithme (qui correspond également à la réalité): les $x_i$ sont des réels positifs. Donc $\forall i \in \{1,...,d\},\:c_i(x) = -x_i \leq 0$.\\
+    \item On a les contraintes sur les données des montées $\mu \in \R^N$ qui sont égales aux sommes sur les lignes. Comme ce sont des égalités, on pose deux contraintes opposées à chaque fois. Pour faciliter l'écriture, on se replace dans la vue matricielle :\\
+    $c_{d+i} = \sum^{N}_{j=1} \gamma_{ij} -\mu_i \leq 0$\\
+    $c_{d+N+i} = -(\sum^{N}_{j=1} \gamma_{ij} -\mu_i) \leq 0$\\
+    \item On a les contraintes sur les données de descentes. À nouveau, ce sont des égalités, donc on pose deux inégalités pour chaque colonne.\\
+    $c_{d+2N+j} = \sum^{N}_{i=1} \gamma_{ij} -\nu_j \leq 0$\\
+    $c_{d+3N+j} = -(\sum^{N}_{i=1} \gamma_{ij} -\nu_j) \leq 0$\\
+\end{itemize}
+Toutes les fonctions de contraintes sont des fonctions polynomiales du premier degré donc sont convexes et continues alors $K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}$ est un convexe fermé.\\
+\\
+Notre problème vérifie donc bien toutes les conditions d'un problème de minimisation sous contraintes : il existe bien une unique solution que l'on va pouvoir approcher à l'aide de la méthode de pénalisation.
+\[P_{S\epsilon} = \min_{\R^d} \sum^d_{i=1} x_ilog(x_i) + \frac{1}{\epsilon} \sum^{l}_{j = 1}max(c_i(x),0)^2 \]
+\subsubsection{Application en python}
+La suite naturelle est d'implémenter ces méthodes en Python et de les tester sur différentes données. Pour cela, on doit passer en vue vectorielle ($\R^d$) plutôt que matricielle. Voici un exemple pour une matrice Origine-Destination de taille 5 ($d=10$):
+\begin{adjustwidth}{-2cm}{-2cm}
+
+\[
+\gamma =
+\begin{pmatrix}
+\gamma_{00} & \gamma_{01} & \gamma_{02} &\gamma_{03} & \gamma_{04}\\
+\gamma_{10} & \gamma_{11} & \gamma_{12} &\gamma_{13} & \gamma_{14}\\
+\gamma_{20} & \gamma_{21} & \gamma_{22} &\gamma_{23} & \gamma_{24}\\
+\gamma_{30} & \gamma_{31} & \gamma_{32} &\gamma_{33} & \gamma_{34}\\
+\gamma_{40} & \gamma_{41} & \gamma_{42} &\gamma_{43} & \gamma_{44}\\
+\end{pmatrix}
+=
+\begin{pmatrix}
+0 & x_1 & x_2 & x_3 & x_4\\
+0 & 0 & x_5 & x_6 & x_7\\
+0 & 0 & 0 & x_8 & x_9\\
+0 & 0 & 0 & 0 & x_{10}
+\end{pmatrix}
+\to x = 
+\begin{pmatrix}
+x_1\\
+x_2\\
+x_3\\
+x_4\\
+x_5\\
+x_6\\
+x_7\\
+x_8\\
+x_9\\
+x_{10}\\
+\end{pmatrix}
+\]
+\end{adjustwidth}
+Dans un premier temps, nous nous sommes intéressés à la bibliothèque \href{https://docs.scipy.org/doc/scipy/tutorial/optimize.html#id21}{Scipy} et plus précisément la fonction \textsc{minimize} avec la méthode \textsc{trust-constr} (Trust-Region Constrained Algorithm). Pour cette méthode, il est nécessaire de définir des bornes pour les valeurs [0, $+\infty$[ ainsi qu'une matrice de contraintes. C'est une matrice A telle que :
+\[
+Ax =
+\begin{pmatrix}
+\mu_0\\
+\vdots\\
+\mu_N\\
+\nu_0\\
+\vdots\\
+\nu_N
+\end{pmatrix}
+\]
+Puis dans un second temps, on s'est intéressé à l'implémentation de la méthode de pénalisation décrite dans la section précédente. Pour cela, on se base également sur la bibliothèque Scipy et la fonction \textsc{minimize} mais cette fois on utilise la méthode \textsc{Nelder-Mead} qui n'utilise pas de borne et de contraintes linéaires. En effet, comme nous l'avions vu, dans la méthode de pénalisation les contraintes sont prises en compte par le biais de la fonction qui est passée en argument. Il ne s'agit pas seulement de la fonction à minimiser (ici l'entropie) mais également de termes qui explosent lorsque les contraintes ne sont pas vérifiées. Cependant, du fait que l'on s'intéresse (en partie) à des contraintes d'égalités on peut transformer les aaah en aaaaah. explication réécriture des contraintes d'égalité (voir tp4) et explication de la recherche du meilleur epsilon avec l'utilisation de la fonction de test de qualité.\\
+\\
+Pour les deux méthodes, on a fait le choix de normaliser les vecteurs de montées et de descentes (Bertrand / parce que l'entropie est def comme un truc de probas et donc c'est mieux d'avoir une densité). Pour les deux méthodes il est nécessaire de choisir un vecteur initial $x_0 \in \Rd$. Pour cela, on prend le vecteur correspondant aux produit des marginales. (Faire joli dessin). \\
+\\
+test sur des petits vecteurs et de petites valeurs (5 et 6). Comparaison aux résultats précédents ? Quelques images de graphes pour illustrer les résultats trouvés ?\\
+\\
+En prenant contact avec Rennes Métropole, nous avons également eu accès à de véritables données de déplacements issues de  \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{l'enquête réalisée au printemps 2023} avec notamment des matrices Origine-Destination. Nous allons alors voulu comparer ces données avec les deux algorithmes de minimisation. Nous nous sommes intéressés aux données d'un jour de semaine sur la ligne A (sens Poterie $\to$ Kennedy) sur la plage de 8h30-9h14. Comparer aux données lagrangiennes réelles.\\
+\\
+Tableau comparatif des temps et des précisions et donc du choix de la méthode de pénalisation plutôt que des méthodes de Scipy. (également comparer avec le temps pris par les méthodes de calculs sur l'ensemble des matrices correctes).\\
+\\
+Au final, il ressort que la méthode de pénalisation est la plus rapide des deux notamment pour les grandes valeurs, mais qu'au global les deux sont toujours beaucoup plus efficaces que le calcul de l'ensemble des matrices correspondantes. Le défaut est que l'on perd le côté valeurs entières, on travaillera plutôt sur des densités plutôt que sur le comptage de véritables humains.
+\subsection{Mesure de Gibbs}
+
+\section{Temps de transport}
+\subsection{Cadre théorique}
+On se place maintenant dans un cadre plus large que celui de la ligne de bus : un réseau de transport d'une agglomération avec des routes, des lignes de métro, des lignes de bus, etc. On reprend la modélisation par un graphe, on pose $\mathcal{N} = (V,\:E)$ où :
+\begin{itemize}
+    \item $V$ est un ensemble de points qui correspondent à des zones géographiques de taille réduite : une zone de travail, d'habitation, d'étude ou un point de bifurcation (échangeur routier, gare de correspondance, etc).\\
+    \item $E$ est un ensemble d'arêtes qui correspondent à des tronçons routiers ou de voies ferrées qui relient deux points de $V$. On attribue un type à chaque arête : C si c'est un transport en commun et R si c'est un transport routier.\\
+\end{itemize}
+On note :
+\begin{itemize}
+    \item $X \subset V$ les zones de départ (zone d'habitation).\\
+    \item  $Y \subset V$ les zones d'arrivée (zones d'étude ou de travail).\\
+\end{itemize}
+\rmq $\:$On n'a pas nécessairement $X \cap Y = \emptyset$.\\
+\\
+On se donne une mesure $\mu = (\mu_x) = \R^X_+$ sur $X$ quantifiant le nombre de personnes rattachées aux différentes zones de $X$. Et pareillement une mesure $\nu = (\nu_y) = \R^Y_+$ quantifiant le nombre de personnes rattachées aux différentes zones de $Y$.\\
+\\
+On peut à nouveau introduire la notion de plan Origine-Destination $\gamma = (\gamma_{xy}) \in \R^{X\times Y}_+$ où $\gamma_{xy}$ est le nombre de personnes voulant se rendre de $x$ à $y$. On notera $\Lambda_{\mu \nu}$ les plans qui satisfont les conditions :
+\[
+\sum_{y \in Y} \gamma_{xy}= \mu_x \text{ et } \sum_{x \in X} \gamma_{xy}= \nu_y
+\]
+On introduit également le support de $(\gamma_{xy}) : \Lambda = \{(x,y) \in X\times Y, \: \gamma_{xy} > 0\}$, l'ensemble des couples départ-arrivée qui sont concernés par une quantité non-nulle de voyageurs.\\
+\\
+On introduit ensuite la notion de chemin. Pour $x \in X \text{ et } y \in Y$, on définit un chemin entre $x$ et $y$ comme une suite consécutive d'arêtes dont la première est issue de $x$ et la dernière termine en $y$. On dira qu'un chemin $c$ est admissible s'il ne contient des arêtes que de type R ou que de type C ou d'un premier tronçon d'arêtes de type R puis un deuxième tronçon d'arêtes de type C. On note $C_{xy}$ l'ensemble des chemins admissibles de $x$ à $y$.\\
+\\
+On suppose que $Y$ est fortement connecté à $X$ :
+\[
+\forall (x,y) \in \Lambda,\quad C_{xy} \neq \emptyset
+\]
+On introduit ensuite la notion de scénario qui correspond à un choix de répartition (ou de distribution) des voyageurs entre les différents chemins admissibles que l'on note, pour tout $x,y \in \Lambda$, $(\gamma_{xy}^c)_{c \in C_{xy}} \in \R^{C_{xy}}_+$ où $\gamma_{xy}^c$ est le nombre de personnes allant de $x$ à $y$ en passant par le chemin c. On a : \[
+\sum_{c \in C_{xy}} \gamma_{xy}^c = \gamma_{xy}
+\]\\
+\\
+
+\subsection{Problématique}
+À nouveau, on pourrait se poser la question du passage des données eulériennes à lagrangiennes, le problème est relativement similaire mais la présence de plusieurs chemins pour le même trajet de $x$ à $y$ fait augmenter le nombre de scénarios lagrangiens amenant aux mêmes données eulériennes. À nouveau, on pourrait utiliser la maximisation ou la minimisation de l'entropie pour sélectionner un scénario.\\
+\\
+Dans cette section, nous allons plutôt nous intéresser aux temps de trajet et aux stratégies qui leur sont associées.
+La difficulté d'analyse des stratégies tient au fait que le temps de transport associé à un voyageur et son itinéraire peut dépendre du choix des autres voyageurs par des phénomènes de congestions (ex : bouchons sur la rocade rennaise aux heures de pointe ou à la station de métro Gares des lignes a et b).\\
+\\
+On note $T^c_{xy}$ le temps de parcours associé au chemin c entre $x$ et $y$. Ce temps dépend tout d'abord du chemin choisi, mais aussi \textit{a priori} aussi du choix des autres voyageurs. En toute généralité, $T^c_{xy} = T^c_{xy}(\gamma)$ où $\gamma = (\gamma^c_{xy})$ Il s'agit donc d'un temps de parcours \textit{a posteriori} puisqu'il dépend, pour un jour donné, de l'ensemble des choix effectués par les voyageurs qui n'est pas connu \textit{a priori}.\\
+\\
+On fait l'hypothèse qu'un voyageur seul ne pèse rien : son temps de parcours dépend du choix des autres voyageurs, mais sa propre décision personnelle n'affecte pas à elle seule le temps de parcours d'un chemin qui le choisisse ou pas.\\
+\\
+\rmq $\:$ Le temps $T^c_{xy}(\gamma)$ a un sens aussi pour un chemin qui n'est emprunté par personne, i.e. tel que $\gamma^c_{xy} = 0$. Le chemin $c \in C_{xy}$, même s'il est mis de côté par les gens qui vont de $x$ à $y$ reste une option possible et qui dans certains cas sera même plus avantageuse que d'autres chemins empruntés.\\
+\\
+Il existe plusieurs quantités observables associées à un plan $(\gamma^c_{xy})$ :\\
+\\
+Si l'on suppose connue la fonction $T^c()$ d'estimation des temps de parcours, on peut associer à un plan $\gamma = (\gamma^c_{xy})$ le temps moyen de parcours défini par :
+\[
+\Bar{T} = \Bar{T}(\gamma) = \frac{1}{\mu_X} \sum_{(x,y) \in X \times Y} \sum_{c \in C_{xy}} \gamma^c_{xy}T^c_{xy}(\gamma) \quad \text{où } \mu_X = \sum_{x \in X} \mu_x
+\]
+\rmq $\:$ On prendra garde au fait que ce temps moyen n’est pas une fonction linéaire de $\gamma$, du fait de la dépendance des temps de parcours vis-à-vis de $\gamma$. On notera aussi le caractère non local des termes intervenant dans la sommation : le temps de parcours associé à un chemin c de $x$ vers $y$ est susceptible d’être
+influencé par le nombre de voyageurs se rendant de $x' \neq x$ à $y' \neq y$, si le chemin $c'$ en question partage un
+tronçon avec c.\\
+\\
+On peut également observer le temps de parcours "à vide" $T^0_{xy}$, le temps minimal que l'on peut mettre pour aller de $x$ à $y$ (sans congestion). On pourra alors s'intéresser à la différence $T^c_{xy} - T^0_{xy}$ pour un chemin $c$ qui mesurera la "frustration" des voyageurs allant de $x$ à $y$ par le chemin c en un temps $T^c_{xy}$ qui sont conscients qu'ils auraient pu aller plus vite s'ils étaient seuls (absence de congestion).\\
+\\
+On peut associer à un plan $\gamma$ d'autres quantités observables comme la quantité de gaz à effet de serre émise par l'ensemble des voyageurs que l'on pourrait chercher à minimiser.\\
+\\
+Une question qui peut se poser en tant que voyageurs est alors "aurais-je pu aller plus vite si j'avais choisi un autre chemin ?". Pour cela, on introduit la notion d'équilibre de Nash :\\
+\\
+\defin $\:$ Équilibre de Nash pour le temps de parcours d'un plan de mobilité.\\
+Avec les notations précédentes, on dit qu'un plan $\gamma = (\gamma^c_{xy})$ réalise un équilibre de Nash si :\[
+T^c_{xy} \geq T^{max}_{xy} = \max_{c \in C^{xy}, \gamma^c_{xy} > 0} \quad \forall c \in C_{xy}, \: \text{avec égalité si } \gamma^c_{xy} > 0
+\]
+Cela signifie que le temps de parcours associé aux chemins $c \in C^{xy}$ est le même pour tous les chemins empruntés ($\gamma^c_{xy} > 0$) et est plus élevé pour les chemins non empruntés. Un voyageur allant de $x$ à $y$ ayant opté pour un certain chemin n'a pas d'intérêt à changer de chemin pour diminuer son temps de parcours par rapport à ce que font les autres voyageurs.\\
+\\
+Le temps de parcours effectif d'un voyageur dépend de nombreux facteurs et se trouve en particulier conditionné par des phénomènes ponctuels et locaux qu'il est difficile de prévoir. Pour les parcours sur des arêtes de type R (routes), le temps de parcours d'un conducteur dépend en particulier de l'apparition de bouchons qui peuvent apparaitre puis se résorber, de sorte que pour un même parcours, un décalage du départ peut affecter de manière significative le temps de parcours. On peut néanmoins considérer que le temps effectif moyen est une fonction décroissante de la quantité de personnes présentes. Dans cette optique, on pourra considérer par exemple que le temps mis pour parcourir une arête e s'écrit comme un temps de référence $T^e_0$ (longueur de e divisé par la vitesse limite sur ce tronçon) multiplié par un facteur correctif supérieur ou égale à 1 qui dépend du nombre de personnes qui empruntent cette arête durant leur parcours.
+\[
+T^e = T^e_0 \psi(\sum_{x,y} \sum_{c\in C_{xy} | e \in c} \gamma^c_{xy})
+\]
+Pour définir $\psi$, on peut s'inspirer des modèles classiques de trafic routier :
+\[
+\psi(m) = \frac{1}{(1 - \frac{m}{m^e_{max}})} \in [1;+\infty[
+\] où $m^e_{max}$ est la quantité de véhicules qui conduit, sur la période de temps considérée, à une saturation complète du trafic.\\
+\\
+Plusieurs questions se posent alors :
+\begin{itemize}
+    \item Existe-t-il toujours un équilibre de Nash pour le cas du temps de parcours d'un plan de mobilité ?\\
+    \item Si oui, est-il unique ? optimal ?\\
+    \item Comment trouver cet équilibre ?
+\end{itemize}
+\section{Autres méthodes}
+Thèse de Remy Coulon
+\section{Conclusion}
+\section{Références}
+\bibliography{biblio}
+\section{Annexe}
+\end{document}
