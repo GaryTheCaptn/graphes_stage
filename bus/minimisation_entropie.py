@@ -466,7 +466,7 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
 
     for nbr_arrets in liste_arrets:
         print(nbr_arrets)
-        m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 3, nbr_arrets)
+        m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 8, nbr_arrets)
 
         # On teste la methode scipy
         time_start_scipy = time.time()
@@ -569,29 +569,33 @@ if __name__ == "__main__":
 
     # Test 0 : Fonctionnement des methodes d'optimisation de penalisation et de scipy
     test0 = False
-    if test0 :
+    if test0:
         print("Variation epsilon vecteur 5")
         affichage_resultat_opti(m5, v5, type='penalisation')
         print("Optimisation scipy 5 :" + '\n')
         affichage_resultat_opti(m5, v5, type='scipy')
-        print("__________________________________________________________________________________________________________")
+        print(
+            "__________________________________________________________________________________________________________")
         print("Variation epsilon vecteur 6")
         affichage_resultat_opti(m6, v6, type='penalisation')
         print("Optimisation scipy 6 :" + '\n')
         affichage_resultat_opti(m6, v6, type='scipy')
-        print("__________________________________________________________________________________________________________")
+        print(
+            "__________________________________________________________________________________________________________")
         print("Variation epsilon ligne A")
         affichage_resultat_opti(mA, vA, type='penalisation')
         print("Optimisation scipy ligne A :" + '\n')
         affichage_resultat_opti(mA, vA, type='scipy')
-        print("__________________________________________________________________________________________________________")
+        print(
+            "__________________________________________________________________________________________________________")
 
     # Test 1 : Comparaison de la qualite des resultats et du temps pour des vecteurs aleatoires.
     test1 = True
-    if test1 :
-        # todo
+    if test1:
+        # hi
+
 
     # Test 2 : Comparaison par entropie relativ et moindres carres avec donnes reelles
     test2 = False
     if test2:
-        # todo
+        # hi
