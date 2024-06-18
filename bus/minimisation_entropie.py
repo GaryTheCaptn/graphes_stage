@@ -384,35 +384,6 @@ def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     return res, qual
 
 
-# Fonction affichage des resultats d'optimisation
-def affichage_resultat_opti(m, v, type='scipy'):
-    """
-    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie.
-    :param m: liste d'entiers montees
-    :param v: liste d'entiers descentes
-    :param type: scipy ou epsilon
-    :return: None
-    """
-    time_start = time.time()
-    # On recupere le resultat
-    # scipy
-    if type == 'scipy':
-        vect_resultat, qual_resultat = optimisation_scipy(m, v)
-    # epsilon
-    else:
-        vect_resultat, qual_resultat = variation_epsilon(m, v)
-
-    # S'il y a un resultat
-    if len(vect_resultat) > 0:
-        matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
-        affiche_matrice_propre(matrice_resultat)
-        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
-        print("Duree du traitement (secondes) :")
-        print(time.time() - time_start)
-    else:
-        print("Pas de resultat")
-
-
 # Fonctions pour les tests :
 
 # Test 1 : Comparaison qualite et temps entre les deux methodes a partir de donnees euleriennes
@@ -455,7 +426,7 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
 
 
 def comparaison_methodes_qualite_temps_vect_aleatoires():
-    liste_arrets = np.linspace(5, 20, 16)
+    liste_arrets = np.linspace(5, 25, 21)
     liste_arrets = list(map(int, liste_arrets))
 
     qualite_methode_epsilon = []
@@ -558,16 +529,43 @@ def comparaison_mc_entropie(matriceOD):
     return entropie_relative_eps, entropie_relative_scipy
 
 
+# Fonction affichage des resultats d'optimisation
+def affichage_resultat_opti(m, v, type='scipy'):
+    """
+    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie.
+    :param m: liste d'entiers montees
+    :param v: liste d'entiers descentes
+    :param type: scipy ou epsilon
+    :return: None
+    """
+    time_start = time.time()
+    # On recupere le resultat
+    # scipy
+    if type == 'scipy':
+        vect_resultat, qual_resultat = optimisation_scipy(m, v)
+    # epsilon
+    else:
+        vect_resultat, qual_resultat = variation_epsilon(m, v)
+
+    # S'il y a un resultat
+    if len(vect_resultat) > 0:
+        matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
+        affiche_matrice_propre(matrice_resultat)
+        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
+        print("Duree du traitement (secondes) :")
+        print(time.time() - time_start)
+    else:
+        print("Pas de resultat")
+
+
 if __name__ == "__main__":
     # Donnees :
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
-    mA = [494, 292, 403, 176, 670, 358, 242, 1268, 152, 535, 693, 118, 10, 43, 0]
-    vA = [0, 7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470]
 
-    # Test 0 : Fonctionnement des methodes d'optimisation de penalisation et de scipy
+    # Test 0 : Resultats optimisation pour les vecteurs 5 et 6 / A comparer avec les resultats de la recherche exhaustive
     test0 = False
     if test0:
         print("Variation epsilon vecteur 5")
@@ -580,22 +578,15 @@ if __name__ == "__main__":
         affichage_resultat_opti(m6, v6, type='penalisation')
         print("Optimisation scipy 6 :" + '\n')
         affichage_resultat_opti(m6, v6, type='scipy')
-        print(
-            "__________________________________________________________________________________________________________")
-        print("Variation epsilon ligne A")
-        affichage_resultat_opti(mA, vA, type='penalisation')
-        print("Optimisation scipy ligne A :" + '\n')
-        affichage_resultat_opti(mA, vA, type='scipy')
-        print(
-            "__________________________________________________________________________________________________________")
 
     # Test 1 : Comparaison de la qualite des resultats et du temps pour des vecteurs aleatoires.
     test1 = True
     if test1:
+        comparaison_methodes_qualite_temps_vect_aleatoires()
         # hi
 
-
-    # Test 2 : Comparaison par entropie relativ et moindres carres avec donnes reelles
+    # Test 2 : Comparaison par entropie relative et moindres carres avec donnes reelles
     test2 = False
     if test2:
+        print("Hello")
         # hi
