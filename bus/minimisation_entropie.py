@@ -2,6 +2,7 @@ import scipy.optimize
 import time
 import random
 import numpy as np
+import extraction_donnees
 import matplotlib.pyplot as plt
 from bus import somme_colonne, somme_ligne, lagrange_to_euler
 
@@ -558,25 +559,39 @@ def comparaison_mc_entropie(matriceOD):
 
 
 if __name__ == "__main__":
-    comparaison_methodes_qualite_temps_vect_aleatoires()
-
+    # Donnees :
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
-    print("Variation epsilon vecteur 5")
-    affichage_resultat_opti(m5, v5, type='penalisation')
-    print("Optimisation scipy 5 :" + '\n')
-    affichage_resultat_opti(m5, v5, type='scipy')
-    print("__________________________________________________________________________________________________________")
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
-    print("Variation epsilon vecteur 6")
-    affichage_resultat_opti(m6, v6, type='penalisation')
-    print("Optimisation scipy 6 :" + '\n')
-    affichage_resultat_opti(m6, v6, type='scipy')
-    print("__________________________________________________________________________________________________________")
     mA = [494, 292, 403, 176, 670, 358, 242, 1268, 152, 535, 693, 118, 10, 43, 0]
     vA = [0, 7, 35, 21, 157, 70, 76, 726, 330, 820, 927, 309, 386, 1128, 470]
-    print("Variation epsilon ligne A")
-    affichage_resultat_opti(mA, vA, type='penalisation')
-    print("Optimisation scipy ligne A :" + '\n')
-    affichage_resultat_opti(mA, vA, type='scipy')
+
+    # Test 0 : Fonctionnement des methodes d'optimisation de penalisation et de scipy
+    test0 = False
+    if test0 :
+        print("Variation epsilon vecteur 5")
+        affichage_resultat_opti(m5, v5, type='penalisation')
+        print("Optimisation scipy 5 :" + '\n')
+        affichage_resultat_opti(m5, v5, type='scipy')
+        print("__________________________________________________________________________________________________________")
+        print("Variation epsilon vecteur 6")
+        affichage_resultat_opti(m6, v6, type='penalisation')
+        print("Optimisation scipy 6 :" + '\n')
+        affichage_resultat_opti(m6, v6, type='scipy')
+        print("__________________________________________________________________________________________________________")
+        print("Variation epsilon ligne A")
+        affichage_resultat_opti(mA, vA, type='penalisation')
+        print("Optimisation scipy ligne A :" + '\n')
+        affichage_resultat_opti(mA, vA, type='scipy')
+        print("__________________________________________________________________________________________________________")
+
+    # Test 1 : Comparaison de la qualite des resultats et du temps pour des vecteurs aleatoires.
+    test1 = True
+    if test1 :
+        # todo
+
+    # Test 2 : Comparaison par entropie relativ et moindres carres avec donnes reelles
+    test2 = False
+    if test2:
+        # todo
