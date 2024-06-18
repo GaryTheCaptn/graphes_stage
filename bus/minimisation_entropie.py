@@ -3,7 +3,7 @@ import time
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from bus import somme_colonne, somme_ligne
+from bus import somme_colonne, somme_ligne, lagrange_to_euler
 
 
 def affiche_matrice_propre(M):
@@ -101,20 +101,6 @@ def qualite_resultat(vect_resultat, m, v):
         if x_i < 0:
             dist += (x_i) ** 2
     return dist
-
-
-def comparaison_carres(matrice1, matrice2):
-    """
-    :param matrice1: Une matrice OD
-    :param matrice2: Une matrice OD
-    :return: la distance entre les deux matrices coefficient par coefficient
-    """
-    res = 0
-    n = len(matrice1)
-    for i in range(n):
-        for j in range(i + 1, n):  # On a pas besoin de regarder les cases en dessous de la diagonale.
-            res += (matrice1 - matrice2) ** 2
-    return res
 
 
 # Methode Trust-Region Constrained Algorithm de Scipy
@@ -362,7 +348,6 @@ def variation_epsilon(m, d):
 
 
 # Gradient à pas fixe
-
 def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     """
     :param x0: vecteur initial (taille d)
@@ -398,7 +383,37 @@ def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     return res, qual
 
 
+# Fonction affichage des resultats d'optimisation
+def affichage_resultat_opti(m, v, type='scipy'):
+    """
+    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie.
+    :param m: liste d'entiers montees
+    :param v: liste d'entiers descentes
+    :param type: scipy ou epsilon
+    :return: None
+    """
+    time_start = time.time()
+    # On recupere le resultat
+    # scipy
+    if type == 'scipy':
+        vect_resultat, qual_resultat = optimisation_scipy(m, v)
+    # epsilon
+    else:
+        vect_resultat, qual_resultat = variation_epsilon(m, v)
+
+    # S'il y a un resultat
+    if len(vect_resultat) > 0:
+        matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
+        affiche_matrice_propre(matrice_resultat)
+        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
+        print("Duree du traitement (secondes) :")
+        print(time.time() - time_start)
+    else:
+        print("Pas de resultat")
+
+
 # Fonctions pour les tests :
+
 # Test 1 : Comparaison qualite et temps entre les deux methodes a partir de donnees euleriennes
 def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
     """
@@ -438,7 +453,7 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
     return montees, descentes
 
 
-def comparaisons_methodes():
+def comparaison_methodes_qualite_temps_vect_aleatoires():
     liste_arrets = np.linspace(5, 20, 16)
     liste_arrets = list(map(int, liste_arrets))
 
@@ -479,40 +494,71 @@ def comparaisons_methodes():
     plt.show()
 
 
-# Test 2 : Comparaison (moindres carres) matrices OD et matrices trouvees par les deux methodes.
-# Rappel : fonction pour passer de matrice OD à Euler : bus.lagrange_to_euler(matrice)
+# Test 2, 3 : Comparaison (moindres carres puis entropie relative) matrices OD et matrices trouvees par les deux methodes.
 
-# Fonction affichage des resultats
-def affichage_resultat_opti(m, v, type='scipy'):
+def distance_moindres_carres(matrice1, matrice2):
     """
-    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie.
-    :param m: liste d'entiers montees
-    :param v: liste d'entiers descentes
-    :param type: scipy ou epsilon
-    :return: None
+    :param matrice1: Une matrice OD
+    :param matrice2: Une matrice OD
+    :return: la distance entre les deux matrices coefficient par coefficient
     """
+    res = 0
+    n = len(matrice1)
+    for i in range(n):
+        for j in range(i + 1, n):  # On a pas besoin de regarder les cases en dessous de la diagonale.
+            res += (matrice1 - matrice2) ** 2
+    return res
+
+
+def distance_entropie_relative(matriceOD, matrice2):
+    """
+    :param matriceOD: matrice origine destination (avec des 0 potentiellement)
+    :param matrice2: matrice trouvee par optimisation
+    :return: l'entropie relative S_matrice2(matrice_OD)
+    """
+    res = 0
+    for i in range(1, len(matriceOD)):
+        for j in range(i + 1, len(matriceOD)):
+            if matrice2[i][j] != 0:
+                res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+    return res
+
+
+def comparaison_mc_entropie(matriceOD):
+    m, v = lagrange_to_euler(matriceOD)
+    n = len(m)
+
+    # Test methode penalisation
     time_start = time.time()
-    # On recupere le resultat
-    # scipy
-    if type == 'scipy':
-        vect_resultat, qual_resultat = optimisation_scipy(m, v)
-    # epsilon
-    else:
-        vect_resultat, qual_resultat = variation_epsilon(m, v)
+    vect_eps, qual_eps = variation_epsilon(m, v)
+    time_eps = time.time() - time_start
+    matrice_eps = initialise_matrice_from_vect(vect_eps, n)
+    entropie_relative_eps = distance_entropie_relative(matriceOD, matrice_eps)
+    distance_mc_eps = distance_moindres_carres(matriceOD, matrice_eps)
+    print("L'entropie relative pour eps est " + str(
+        entropie_relative_eps) + "et la distance au sens des moindres carres est de " + str(
+        distance_mc_eps) + " et l'operation a pris " + str(
+        time_eps) + " secondes.")
+    affiche_matrice_propre(matrice_eps)
 
-    # S'il y a un resultat
-    if len(vect_resultat) > 0:
-        matrice_resultat = initialise_matrice_from_vect(vect_resultat, len(m))
-        affiche_matrice_propre(matrice_resultat)
-        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
-        print("Duree du traitement (secondes) :")
-        print(time.time() - time_start)
-    else:
-        print("Pas de resultat")
+    # Test sur la methode scipy
+    time_start = time.time()
+    vect_scipy, qual_scipy = optimisation_scipy(m, v)
+    time_scipy = time.time() - time_start
+    matrice_scipy = initialise_matrice_from_vect(vect_scipy, n)
+    entropie_relative_scipy = distance_entropie_relative(matriceOD, matrice_scipy)
+    distance_mc_scipy = distance_moindres_carres(matriceOD, matrice_scipy)
+    print("L'entropie relative pour scipy est " + str(
+        entropie_relative_scipy) + "et la distance au sens des moindres carres est de " + str(
+        distance_mc_scipy) + " et l'operation a pris " + str(
+        time_scipy) + " secondes.")
+    affiche_matrice_propre(matrice_scipy)
+
+    return entropie_relative_eps, entropie_relative_scipy
 
 
 if __name__ == "__main__":
-    comparaisons_methodes()
+    comparaison_methodes_qualite_temps_vect_aleatoires()
 
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
