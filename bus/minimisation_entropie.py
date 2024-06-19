@@ -4,7 +4,7 @@ import random
 import numpy as np
 from extraction_donnees import extraction_donnees
 import matplotlib.pyplot as plt
-from bus import somme_colonne, somme_ligne, lagrange_to_euler
+from bus import lagrange_to_euler
 
 
 def affiche_matrice_propre(M):
@@ -29,26 +29,27 @@ def normalisation_vecteurs(m, v):
     :return: les vecteurs m et v normalises.
     """
     K = sum(m)
-    normalized_m = [m_i / K for m_i in m]
-    normalized_v = [v_i / K for v_i in v]
+    invK = 1 / K
+    normalized_m = [m_i * invK for m_i in m]
+    normalized_v = [v_i * invK for v_i in v]
     return normalized_m, normalized_v
 
 
 def generation_matrice_numeros(n):
     """
     :param n: entier, taille de la matrice
-    :return: une matrice avec les index de chaque case pour le vecteur colonne associe et des -1 pour les autres
+    :return: une matrice avec les index de chaque case pour le vecteur colonne associé et des -1 pour les autres
     """
-    M = [[-1] * n for _ in range(n)]
+    M = np.full((n, n), -1, dtype=int)
     index = 0
-    for i in range(0, n):
+    for i in range(n):
         for j in range(i + 1, n):
-            M[i][j] = index
+            M[i, j] = index
             index += 1
     return M
 
 
-def vecteur_initial(m, v, n):
+def vecteur_initial(m, v, matrice_numeros, n):
     """
     :param m: liste d'entier (montees)
     :param v: liste d'entier (descentes)
@@ -56,9 +57,8 @@ def vecteur_initial(m, v, n):
     :return: le vecteur initial pour la minimisation qui correspond au produit des marginales (m_i * v_j = gamma_ij)
     """
     d = int((n - 1) * n / 2)
-    x0 = [0 for _ in range(d)]
-    matrice_numeros = generation_matrice_numeros(n)
-    for i in range(0, n - 1):
+    x0 = [0] * d
+    for i in range(n - 1):
         for j in range(i + 1, n):
             index = matrice_numeros[i][j]
             x0[index] = m[i] * v[j]
@@ -69,135 +69,107 @@ def initialise_matrice_from_vect(x, n):
     """
     :param x: un vecteur d'entiers de taille d = n*(n-1)/2
     :param n: la taille de la matrice
-    :return: la matrice de taille n dont les coefficients sur la partie superieure (stricte) droite
-    correspond au vecteur x.
+    :return: la matrice de taille n dont les coefficients sur la partie supérieure (stricte) droite
+    correspondent au vecteur x.
     """
-    matrice = [[0] * n for _ in range(n)]
+    matrice = np.zeros((n, n), dtype=int)
     index = 0
     for i in range(n):
         for j in range(i + 1, n):
-            matrice[i][j] = x[index]
+            matrice[i, j] = x[index]
             index += 1
-    return matrice
+    return matrice.tolist()
 
 
-def qualite_resultat(vect_resultat, m, v, N):
+def qualite_resultat(vect_resultat, m, v, n):
     """
-    :param vect_resultat: un vecteur avec les resultats d'une optimisation
-    :param m: les montees normalise
-    :param v: les descentes normalise
-    :param N: la taille de la matrice
-    :return: la qualite du resultat vis-a-vis du respect des contraintes
+    :param vect_resultat: un vecteur avec les résultats d'une optimisation
+    :param m: les montées normalisées
+    :param v: les descentes normalisées
+    :param n: la taille de la matrice
+    :return: la qualité du résultat vis-à-vis du respect des contraintes
     """
-    matrice_resultat = initialise_matrice_from_vect(vect_resultat, N)
+    matrice_resultat = initialise_matrice_from_vect(vect_resultat, n)
     dist = 0
-    # Distance pour le respect des sommes sur les lignes et les colonnes
-    for i in range(N):
-        dist += (somme_ligne(matrice_resultat, i) - m[i]) ** 2 + (
-                somme_colonne(matrice_resultat, i) - v[i]) ** 2
+
+    # Convertir les listes m et v en tableaux NumPy pour les opérations vectorisées
+    m = np.array(m)
+    v = np.array(v)
+
+    # Calcul de la distance pour le respect des sommes sur les lignes et les colonnes
+    somme_lignes = np.sum(matrice_resultat, axis=1)
+    somme_colonnes = np.sum(matrice_resultat, axis=0)
+    dist += np.sum((somme_lignes - m) ** 2) + np.sum((somme_colonnes - v) ** 2)
 
     # Distance pour le respect des valeurs >= 0
-    for x_i in vect_resultat:
-        if x_i < 0:
-            dist += x_i ** 2
+    vect_resultat = np.array(vect_resultat)
+    dist += np.sum(vect_resultat[vect_resultat < 0] ** 2)
+
     return dist
 
 
 # Methode Trust-Region Constrained Algorithm de Scipy
 
-def generation_matrice_contraintes(n):
+def generation_matrice_contraintes(n, matrice_numeros):
     """
     :param n: la taille de la matrice
+    :param matrice_numeros: la matrice avec les numeros vecteur
     :return: la matrice de contraintes A tel que Ax = m++v
     """
-    d = int((n - 1) * n / 2)
-
-    # Matrice numéros
-    matrice_numeros = generation_matrice_numeros(n)
+    d = (n - 1) * n // 2
 
     # Matrice vierge pour les contraintes
-    A = [[0] * d for _ in range(2 * n)]
+    A = np.zeros((2 * n, d), dtype=int)
 
-    # Contraintes de montees
-    for i in range(0, n):
-
-        for j in range(1, n):
+    # Contraintes de montées
+    for i in range(n):
+        for j in range(i + 1, n):
             temp_index = matrice_numeros[i][j]
             if temp_index != -1:
-                A[i][temp_index] = 1
+                A[i, temp_index] = 1
 
     # Contraintes de descentes
-    ligne_descente = n
-    for j in range(0, n):
-        for i in range(0, n):
+    for j in range(n):
+        for i in range(j):
             temp_index = matrice_numeros[i][j]
             if temp_index != -1:
-                A[ligne_descente + j][temp_index] = 1
+                A[n + j, temp_index] = 1
 
     return A
 
 
 def optimisation_scipy(m, v, n):
-    """
-    :param m: liste d'entiers de montees (normalise)
-    :param v: listen d'entier de descentes (normalise)
-    :param n: longueur du vecteur
-    :return: le resultat de l'optimization par la mehtode de Scipy avec contraintes.
-    """
-    d = int((n - 1) * n / 2)
+    d = (n - 1) * n // 2
 
-    # Definition de la fonction a minimiser
     def entropie(x):
-        res = 0
-        # Entropie
-        for x_i in x:
-            if x_i > 0:
-                res += x_i * np.log(x_i)
+        res = np.sum(x[x > 0] * np.log(x[x > 0]))
         return res
 
-    # Definition de la jacobienne associee
     def jacobian_entropie(x):
-        res = []
-        for x_i in x:
-            if x_i > 0:
-                res += [np.log(x_i) + 1]
-            else:
-                res += [0]
+        res = np.zeros_like(x)
+        positive_indices = x > 0
+        res[positive_indices] = np.log(x[positive_indices]) + 1
         return res
 
-    # Definition de la hessienne associee
     def hessian_entropie(x):
-        res = []
         d = len(x)
-        for i in range(d):
-            ligne_res = []
-            for j in range(d):
-                if i != j:
-                    ligne_res.append(0)
-                else:
-                    ligne_res.append(1 / x[i])
-            res.append(ligne_res)
+        res = np.zeros((d, d))
+        positive_indices = x > 0
+        res[np.diag_indices_from(res)] = np.where(positive_indices, 1 / x, 0)
         return res
 
-    # Contraintes sur les montees et descentes
-    montes_descentes = m + v
-    matrice_contraintes = generation_matrice_contraintes(n)
+    matrice_numeros = generation_matrice_numeros(n)
+    montes_descentes = np.concatenate((m, v))
+    matrice_contraintes = generation_matrice_contraintes(n, matrice_numeros)
     contraintes_montes_descentes = scipy.optimize.LinearConstraint(matrice_contraintes, montes_descentes,
                                                                    montes_descentes)
-
-    # Contraintes sur les valeurs positives
-    zeros = [0 for _ in range(4 * n)]
     bnds = [(0, None) for _ in range(d)]
+    x0 = vecteur_initial(m, v, matrice_numeros, n)
 
-    # Vecteur initial : produit des marginales
-    x0 = vecteur_initial(m, v, n)
-
-    # Minimisation par la méhtode de scipy
     resultat = scipy.optimize.minimize(entropie, x0, jac=jacobian_entropie, hess=hessian_entropie,
                                        method='trust-constr', bounds=bnds,
                                        constraints=contraintes_montes_descentes)
 
-    # On recupere les informations qui nous interesse
     vect_resultat = resultat.x
     qual_resultat = qualite_resultat(vect_resultat, m, v, n)
 
@@ -212,11 +184,16 @@ def index_ligne_colonne(index, matrice_numeros, n):
     :param n: taille de la matrice
     :return: les indices i(ligne) et j (colonne) ou se trouve l'element x_i dans la matrice numeros
     """
-    for i in range(0, n):
-        for j in range(0, n):
-            if matrice_numeros[i][j] == index:
-                return i, j
-    return -1, -1
+    # Convertir la matrice en un array NumPy
+    matrice_numeros = np.array(matrice_numeros)
+
+    # Trouver les indices ou la valeur est egale à l'index
+    result = np.where(matrice_numeros == index)
+
+    if result[0].size > 0 and result[1].size > 0:
+        return result[0][0], result[1][0]
+    else:
+        return -1, -1
 
 
 def liste_numeros_meme_ligne(i, matrice_numeros, n):
@@ -226,10 +203,16 @@ def liste_numeros_meme_ligne(i, matrice_numeros, n):
     :param n: taille de la matrice
     :return: la liste des indices qui sont sur la ligne i.
     """
-    res = []
-    for j in range(i + 1, n):
-        res.append(matrice_numeros[i][j])
-    return res
+    # Convertir la matrice en un array NumPy
+    matrice_numeros = np.array(matrice_numeros)
+
+    # Selectionner la ligne i a partir de la matrice et ignorer les valeurs -1
+    ligne_i = matrice_numeros[i, i + 1:n]
+
+    # Filtrer les valeurs -1
+    res = ligne_i[ligne_i != -1]
+
+    return list(res)
 
 
 def liste_numeros_meme_colonne(j, matrice_numeros):
@@ -253,6 +236,7 @@ def penalisation(m, v, eps, n):
     :return: la matrice OD minimisant l'entropie par la methode de penalisation
     """
     inv_esp = 1 / eps
+    matrice_numeros = generation_matrice_numeros(n)
 
     # Definition de la fonction a minimiser avec l'ajout des contraintes
     def entropie_et_contraintes(x):
@@ -290,7 +274,6 @@ def penalisation(m, v, eps, n):
     # Definition de la jacobienne
     def jacobian_entropie_et_contraintes(x):
         res = []
-        matrice_numeros = generation_matrice_numeros(n)
         index = 0
         for x_i in x:
             val = 0
@@ -315,7 +298,7 @@ def penalisation(m, v, eps, n):
         return res
 
     # Fonction scipy
-    x0 = vecteur_initial(m, v, n)
+    x0 = vecteur_initial(m, v, matrice_numeros, n)
     # resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
     resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
 
