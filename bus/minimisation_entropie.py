@@ -35,6 +35,17 @@ def normalisation_vecteurs(m, v):
     return normalized_m, normalized_v
 
 
+def normalisation_matrice(matrice):
+    K = np.sum(matrice) / 2  # Les gens sont comptes en double : a la monte et la descente
+    invK = 1 / K
+    # Copie la partie superieure de la matrice
+    matrice_normalisee = np.triu(matrice, 1)
+    # Normalisation de la partie superieure de la matrice
+    matrice_normalisee *= invK
+
+    return matrice_normalisee
+
+
 def generation_matrice_numeros(n):
     """
     :param n: entier, taille de la matrice
@@ -72,13 +83,13 @@ def initialise_matrice_from_vect(x, n):
     :return: la matrice de taille n dont les coefficients sur la partie supérieure (stricte) droite
     correspondent au vecteur x.
     """
-    matrice = np.zeros((n, n), dtype=int)
+    matrice = np.zeros((n, n), dtype=float)
     index = 0
     for i in range(n):
         for j in range(i + 1, n):
-            matrice[i, j] = x[index]
+            matrice[i][j] = x[index]
             index += 1
-    return matrice.tolist()
+    return matrice
 
 
 def qualite_resultat(vect_resultat, m, v, n):
@@ -235,40 +246,27 @@ def penalisation(m, v, eps, n):
     :param n: longueur des listes
     :return: la matrice OD minimisant l'entropie par la methode de penalisation
     """
-    inv_esp = 1 / eps
+    inv_eps = 1 / eps
     matrice_numeros = generation_matrice_numeros(n)
 
     # Definition de la fonction a minimiser avec l'ajout des contraintes
     def entropie_et_contraintes(x):
         res = 0
-        # Entropie
-        for x_i in x:
-            if x_i > 0:
-                res += x_i * np.log(x_i)
+        x_pos = x[x > 0]
+        res += np.sum(x_pos * np.log(x_pos))
 
-        # Reconstituer la matrice a partir du vect x pour faire les calculs sur les lignes et colonnes
         matrice = initialise_matrice_from_vect(x, n)
-
-        # Contraintes sur les montees
         for i in range(n - 1):
-            temp_sum = 0
-            for j in range(i + 1, n):
-                temp_sum += matrice[i][j]
-            temp_sum += -m[i]
-            res += inv_esp * temp_sum * temp_sum
+            indices_ligne = matrice_numeros[i, i + 1:n]
+            sum_ligne = np.sum(x[indices_ligne[indices_ligne != -1]])
+            res += inv_eps * (sum_ligne - m[i]) ** 2
 
-        # Contraintes sur les descentes
         for j in range(1, n):
-            temp_sum = 0
-            for i in range(0, j):
-                temp_sum += matrice[i][j]
-            temp_sum += -v[j]
-            res += inv_esp * temp_sum * temp_sum
+            indices_colonne = matrice_numeros[0:j, j]
+            sum_colonne = np.sum(x[indices_colonne[indices_colonne != -1]])
+            res += inv_eps * (sum_colonne - v[j]) ** 2
 
-        # Contraintes sur le caractère positif
-        for x_i in x:
-            res += max(-inv_esp * x_i, 0) ** 2
-
+        res += np.sum(np.maximum(-inv_eps * x, 0) ** 2)
         return res
 
     # Definition de la jacobienne
@@ -284,14 +282,14 @@ def penalisation(m, v, eps, n):
             somme_ligne = 0
             for k in liste_numeros_ligne:
                 somme_ligne += x[k]
-            somme_ligne = 2 * inv_esp * (somme_ligne - m[i])
+            somme_ligne = 2 * inv_eps * (somme_ligne - m[i])
             val += somme_ligne
 
             liste_numeros_colonne = liste_numeros_meme_colonne(j, matrice_numeros)
             somme_colonne = 0
             for k in liste_numeros_colonne:
                 somme_colonne += x[k]
-            somme_colonne = 2 * inv_esp * (somme_colonne - v[j])
+            somme_colonne = 2 * inv_eps * (somme_colonne - v[j])
             val += somme_colonne
             res.append(val)
             index += 1
@@ -369,21 +367,21 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
     :param nbr_arrets: nombre d'arrets sur la ligne
     :return: une liste correspondant aux montees, une liste correspondant aux descentes
     """
-    montees = [0 * nbr_arrets]
-    descentes = [0 * nbr_arrets]
+    montees = [0] * nbr_arrets
+    descentes = [0] * nbr_arrets
     arret_courant = 0
     nbr_voyageurs_courant = 0
     personnes_restantes = nbr_voyageurs
 
-    for i in range(0, nbr_arrets - 1):
+    for i in range(0, nbr_arrets):
 
         # Si on est au dernier arret, personne ne monte et tout le monde doit descendre
-        if i == nbr_arrets - 2:
+        if i == nbr_arrets - 1:
             montees_i = 0
             descentes_i = nbr_voyageurs_courant
 
         # Si on est à l'avant-dernier arret, il faut faire monter toutes les personnes qui manquent
-        elif i == nbr_arrets - 3:
+        elif i == nbr_arrets - 2:
             montees_i = personnes_restantes
             descentes_i = random.randint(0, nbr_voyageurs_courant)
 
@@ -452,10 +450,15 @@ def distance_moindres_carres(matrice1, matrice2, n):
     :param n: taille des matrices
     :return: la distance entre les deux matrices coefficient par coefficient
     """
-    res = 0
-    for i in range(n):
-        for j in range(i + 1, n):  # On a pas besoin de regarder les cases en dessous de la diagonale.
-            res += (matrice1[i][j] - matrice2[i][j]) ** 2
+    matrice1 = np.array(matrice1)
+    matrice2 = np.array(matrice2)
+
+    # Calcul des différences
+    differences = matrice1 - matrice2
+
+    # Calcul de la somme des carres des differences au-dessus de la diagonale principale
+    res = np.sum(differences[np.triu_indices(n, k=1)] ** 2)
+
     return res
 
 
@@ -467,7 +470,7 @@ def distance_entropie_relative(matriceOD, matrice2, n):
     :return: l'entropie relative S_matrice2(matrice_OD)
     """
     res = 0
-    for i in range(0, n):
+    for i in range(n):
         for j in range(i + 1, n):
             if matrice2[i][j] != 0 and matriceOD[i][j] != 0:
                 res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
@@ -475,8 +478,8 @@ def distance_entropie_relative(matriceOD, matrice2, n):
 
 
 def comparaison_mc_entropie(matriceOD):
+    matriceOD = normalisation_matrice(matriceOD)
     m, v = lagrange_to_euler(matriceOD)
-    m, v = normalisation_vecteurs(m, v)
     n = len(m)
     # Test methode penalisation
     time_start = time.time()
