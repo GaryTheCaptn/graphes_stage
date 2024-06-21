@@ -1,6 +1,8 @@
 import scipy.optimize
 import time
 import random
+import pickle
+import os
 import numpy as np
 from extraction_donnees import extraction_donnees
 import matplotlib.pyplot as plt
@@ -367,8 +369,8 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
     :param nbr_arrets: nombre d'arrets sur la ligne
     :return: une liste correspondant aux montees, une liste correspondant aux descentes
     """
-    montees = [0] * nbr_arrets
-    descentes = [0] * nbr_arrets
+    montees = []
+    descentes = []
     arret_courant = 0
     nbr_voyageurs_courant = 0
     personnes_restantes = nbr_voyageurs
@@ -400,7 +402,7 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
 
 
 def comparaison_methodes_qualite_temps_vect_aleatoires():
-    liste_arrets = np.linspace(5, 25, 21)
+    liste_arrets = np.linspace(5, 20, 16)
     liste_arrets = list(map(int, liste_arrets))
 
     qualite_methode_epsilon = []
@@ -414,17 +416,17 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
         m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 8, nbr_arrets)
         m, v = normalisation_vecteurs(m, v)
 
-        # On teste la methode scipy
-        time_start_scipy = time.time()
-        vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
-        qualite_scipy.append(qual_scipy)
-        temps_scipy.append(time.time() - time_start_scipy)
-
         # On teste la methode eps
         time_start_eps = time.time()
         vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets)
         qualite_methode_epsilon.append(qual_eps)
         temps_epsilon.append(time.time() - time_start_eps)
+
+        # On teste la methode scipy
+        time_start_scipy = time.time()
+        vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
+        qualite_scipy.append(qual_scipy)
+        temps_scipy.append(time.time() - time_start_scipy)
 
     # Temps de calcul
     plt.scatter(liste_arrets, temps_epsilon, label='temps epsilon')
@@ -472,23 +474,41 @@ def distance_entropie_relative(matriceOD, matrice2, n):
     res = 0
     for i in range(n):
         for j in range(i + 1, n):
-            if matrice2[i][j] != 0 and matriceOD[i][j] != 0:
-                res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+            val_1 = matrice2[i][j]
+            val_2 = matriceOD[i][j]
+            if val_1 > 0 and val_2 > 0:
+                val_3 = matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+                res += val_3
     return res
 
 
-def comparaison_mc_entropie(matriceOD):
+def comparaison_mc_entropie(matriceOD, name):
     matriceOD = normalisation_matrice(matriceOD)
     m, v = lagrange_to_euler(matriceOD)
     n = len(m)
+    dossier = "C:/Users/garan/Documents/Stage L3/Code/bus/resultats_minimisation/"
+
     # Test methode penalisation
     time_start = time.time()
     vect_eps, qual_eps = variation_epsilon(m, v, n)
     time_eps = time.time() - time_start
+
+    # On verifie s'il y a bien un resultat
     if len(vect_eps) > 0:
+        # On initialise la matrice a partir du vecteur trouve par la minimisation
         matrice_eps = initialise_matrice_from_vect(vect_eps, n)
+
+        # On sauvegarde la matrice dans un pickle
+        # Sauvegarder la matrices
+        nom_fichier = name + '_eps' + '.pkl'
+        with open(os.path.join(dossier, nom_fichier), 'wb') as f:
+            pickle.dump(matrice_eps, f)
+
+        # Calcul des distances (entropie relative et distance moindres carres)
         entropie_relative_eps = distance_entropie_relative(matriceOD, matrice_eps, n)
         distance_mc_eps = distance_moindres_carres(matriceOD, matrice_eps, n)
+
+        # Affichage du resultat
         print("L'entropie relative pour eps est " + str(
             entropie_relative_eps) + " et la distance au sens des moindres carres est de " + str(
             distance_mc_eps) + " et l'operation a pris " + str(
@@ -502,10 +522,22 @@ def comparaison_mc_entropie(matriceOD):
     time_start = time.time()
     vect_scipy, qual_scipy = optimisation_scipy(m, v, n)
     time_scipy = time.time() - time_start
+
+    # On verifie s'il y a un resultat
     if len(vect_scipy) > 0:
+        # On initialise la matrice a partir du vecteur trouve
         matrice_scipy = initialise_matrice_from_vect(vect_scipy, n)
+
+        # Sauvegarder la matrices
+        nom_fichier = name + '_scipy' + '.pkl'
+        with open(os.path.join(dossier, nom_fichier), 'wb') as f:
+            pickle.dump(matrice_scipy, f)
+
+        # On calcule les distances (entropie relative et moindres carres)
         entropie_relative_scipy = distance_entropie_relative(matriceOD, matrice_scipy, n)
         distance_mc_scipy = distance_moindres_carres(matriceOD, matrice_scipy, n)
+
+        # Affichage du resultat
         print("L'entropie relative pour scipy est " + str(
             entropie_relative_scipy) + " et la distance au sens des moindres carres est de " + str(
             distance_mc_scipy) + " et l'operation a pris " + str(
@@ -551,24 +583,27 @@ def affichage_resultat_opti(m, v, type='scipy'):
 
 if __name__ == "__main__":
     # Donnees :
-    m5 = [2, 3, 1, 2, 0]
-    v5 = [0, 1, 2, 2, 3]
-    m6 = [5, 4, 6, 3, 1, 0]
-    v6 = [0, 2, 4, 3, 5, 5]
 
     # Test 0 : Resultats optimisation pour les vecteurs 5 et 6 / A comparer avec les resultats de la recherche exhaustive
-    test0 = False
+    test0 = True
     if test0:
-        print("Variation epsilon vecteur 5")
-        affichage_resultat_opti(m5, v5, type='penalisation')
-        print("Optimisation scipy 5 :" + '\n')
-        affichage_resultat_opti(m5, v5, type='scipy')
+        matrice_entropie5 = [[0.0, 1.0, 1.0, 0.0, 0.0],
+                             [0.0, 0.0, 1.0, 1.0, 1.0],
+                             [0.0, 0.0, 0.0, 1.0, 0.0],
+                             [0.0, 0.0, 0.0, 0.0, 2.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0]]
+        print("Resultats ligne a 5 arrets")
+        comparaison_mc_entropie(matrice_entropie5, name='matrice_entropie5')
         print(
             "__________________________________________________________________________________________________________")
-        print("Variation epsilon vecteur 6")
-        affichage_resultat_opti(m6, v6, type='penalisation')
-        print("Optimisation scipy 6 :" + '\n')
-        affichage_resultat_opti(m6, v6, type='scipy')
+        matrice_entropie6 = [[0.0, 2.0, 2.0, 0.0, 0.0, 1.0],
+                             [0.0, 0.0, 2.0, 1.0, 1.0, 0.0],
+                             [0.0, 0.0, 0.0, 2.0, 2.0, 2.0],
+                             [0.0, 0.0, 0.0, 0.0, 2.0, 1.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+        print("Resultats ligne a 6 arrets")
+        comparaison_mc_entropie(matrice_entropie6, name='matrice_entropie6')
         print(
             "__________________________________________________________________________________________________________")
 
@@ -586,7 +621,7 @@ if __name__ == "__main__":
         usecols_AJOB = 'C:Q'
         firstrow_AJOB = 7
         matrice_AJOB, noms_AJOB = extraction_donnees(path_AJOB, sheet_AJOB, usecols_AJOB, firstrow_AJOB)
-        comparaison_mc_entropie(matrice_AJOB)
+        # comparaison_mc_entropie(matrice_AJOB, name='matrice_AJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne A Samedi 8h45-8h59" + "\n")
         path_ASam = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_SAMEDI.xlsx'
@@ -594,7 +629,7 @@ if __name__ == "__main__":
         usecols_ASam = 'C:Q'
         firstrow_ASam = 7
         matrice_ASam, noms_ASam = extraction_donnees(path_ASam, sheet_ASam, usecols_ASam, firstrow_ASam)
-        comparaison_mc_entropie(matrice_ASam)
+        # comparaison_mc_entropie(matrice_ASam, name='matrice_ASam')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne B JOB 8h45-8h59" + " \n")
         path_BJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LB_JOB.xlsx'
@@ -602,7 +637,7 @@ if __name__ == "__main__":
         usecols_BJOB = 'C:Q'
         firstrow_BJOB = 7
         matrice_BJOB, noms_BJOB = extraction_donnees(path_BJOB, sheet_BJOB, usecols_BJOB, firstrow_BJOB)
-        comparaison_mc_entropie(matrice_BJOB)
+        # comparaison_mc_entropie(matrice_BJOB, name='matrice_BJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne C4 JOB 8h45-8h59" + " \n")
         path_C4JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
@@ -610,13 +645,13 @@ if __name__ == "__main__":
         usecols_C4JOB = 'C:AK'
         firstrow_C4JOB = 7
         matrice_C4JOB, noms_C4JOB = extraction_donnees(path_C4JOB, sheet_C4JOB, usecols_C4JOB, firstrow_C4JOB)
-        comparaison_mc_entropie(matrice_C4JOB)
+        comparaison_mc_entropie(matrice_C4JOB, name='matrice_C4JOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne C7 JOB 8h45-8h59" + " \n")
-        path_C7JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
+        path_C7JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC7_JOB.xlsx'
         sheet_C7JOB = 'LC7S1_trhor15=t_0845-0859'
         usecols_C7JOB = 'C:U'
         firstrow_C7JOB = 7
         matrice_C7JOB, noms_C7JOB = extraction_donnees(path_C7JOB, sheet_C7JOB, usecols_C7JOB, firstrow_C7JOB)
-        comparaison_mc_entropie(matrice_C7JOB)
+        # comparaison_mc_entropie(matrice_C7JOB, name='matrice_C7JOB')
         print("-------------------------------------------------------------------------------------------------------")
