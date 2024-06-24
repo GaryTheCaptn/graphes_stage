@@ -38,7 +38,7 @@ def normalisation_vecteurs(m, v):
 
 
 def normalisation_matrice(matrice):
-    K = np.sum(matrice) / 2  # Les gens sont comptes en double : a la monte et la descente
+    K = np.sum(matrice)
     invK = 1 / K
     # Copie la partie superieure de la matrice
     matrice_normalisee = np.triu(matrice, 1)
@@ -361,6 +361,39 @@ def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
 
 
 # Fonctions pour les tests :
+def distance_moindres_carres(matrice1, matrice2, n):
+    """
+    :param matrice1: Une matrice OD
+    :param matrice2: Une matrice OD
+    :param n: taille des matrices
+    :return: la distance entre les deux matrices coefficient par coefficient
+    """
+    matrice1 = np.array(matrice1)
+    matrice2 = np.array(matrice2)
+
+    # Calcul des différences
+    differences = matrice1 - matrice2
+
+    # Calcul de la somme des carres des differences au-dessus de la diagonale principale
+    res = np.sum(differences[np.triu_indices(n, k=1)] ** 2)
+
+    return res
+
+
+def distance_entropie_relative(matriceOD, matrice2, n):
+    """
+    :param matriceOD: matrice origine destination (avec des 0 potentiellement)
+    :param matrice2: matrice trouvee par optimisation
+    :param n: taille des matrices
+    :return: l'entropie relative S_matrice2(matrice_OD)
+    """
+    res = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if matrice2[i][j] > 0 and matriceOD[i][j] > 0:
+                res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+    return res
+
 
 # Test 1 : Comparaison qualite et temps entre les deux methodes a partir de donnees euleriennes
 def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
@@ -402,91 +435,131 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
 
 
 def comparaison_methodes_qualite_temps_vect_aleatoires():
-    liste_arrets = np.linspace(5, 20, 16)
+    liste_arrets = np.linspace(8, 10, 3)
     liste_arrets = list(map(int, liste_arrets))
+    temps_eps = []
+    qualite_eps = []
 
-    qualite_methode_epsilon = []
+    temps_scipy = []
     qualite_scipy = []
 
-    temps_epsilon = []
-    temps_scipy = []
-
     for nbr_arrets in liste_arrets:
-        print(nbr_arrets)
-        m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 8, nbr_arrets)
-        m, v = normalisation_vecteurs(m, v)
 
-        # On teste la methode eps
-        time_start_eps = time.time()
-        vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets)
-        qualite_methode_epsilon.append(qual_eps)
-        temps_epsilon.append(time.time() - time_start_eps)
+        # On defini les listes temporaires pour faire la moyenne pour nbr_arrets
+        temps_eps_temp = []
+        qualite_eps_temp = []
 
-        # On teste la methode scipy
-        time_start_scipy = time.time()
-        vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
-        qualite_scipy.append(qual_scipy)
-        temps_scipy.append(time.time() - time_start_scipy)
+        temps_scipy_temp = []
+        qualite_scipy_temp = []
+
+        for i in range(5):
+            print(str(nbr_arrets) + "." + str(i))
+            m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 8, nbr_arrets)
+            m, v = normalisation_vecteurs(m, v)
+
+            # On teste la methode eps
+            time_start_eps = time.time()
+            vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets)
+            qualite_eps_temp.append(qual_eps)
+            temps_eps_temp.append(time.time() - time_start_eps)
+
+            # On teste la methode scipy
+            time_start_scipy = time.time()
+            vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
+            qualite_scipy_temp.append(qual_scipy)
+            temps_scipy_temp.append(time.time() - time_start_scipy)
+
+        temps_eps.append(temps_eps_temp)
+        qualite_eps.append(qualite_eps_temp)
+
+        temps_scipy.append(temps_scipy_temp)
+        qualite_scipy.append(qualite_scipy_temp)
 
     # Temps de calcul
-    plt.scatter(liste_arrets, temps_epsilon, label='temps epsilon')
-    plt.scatter(liste_arrets, temps_scipy, label='temps scipy')
-    plt.title("Comparaison temps de calcul en fonction du nombre d'arrets")
-    plt.legend()
+    plt.figure(figsize=(12, 6))
+    positions_group1 = np.array(range(len(liste_arrets))) * 2.0 - 0.3
+    positions_group2 = np.array(range(len(liste_arrets))) * 2.0 + 0.3
+
+    # Boxplots pour le premier groupe
+    plt.boxplot(temps_eps, positions=positions_group1, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightblue', color='blue'),
+                medianprops=dict(color='blue'),
+                whiskerprops=dict(color='blue'),
+                capprops=dict(color='blue'),
+                showfliers=False)
+
+    # Boxplots pour le deuxième groupe
+    plt.boxplot(temps_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightgreen', color='green'),
+                medianprops=dict(color='green'),
+                whiskerprops=dict(color='green'),
+                capprops=dict(color='green'),
+                showfliers=False)
+
+    # Ajustement des labels et des positions des axes
+    plt.xticks(range(0, len(liste_arrets) * 2, 2), liste_arrets)
+    plt.xlabel('Nombre arrets')
+    plt.ylabel('Temps de traitement')
+    plt.title('Boxplot pour le temps de traitement en fonction du nombre d arrets et de la methode')
+    plt.grid(True)
+    plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
+                plt.Line2D([0], [0], color='lightgreen', lw=4)],
+               ['Penalisation', 'Scipy'])
+
     plt.show()
 
-    # Qualite du resultat
-    plt.scatter(liste_arrets, qualite_methode_epsilon, label='qualite epsilon')
-    plt.scatter(liste_arrets, qualite_scipy, label='qualite scipy')
-    plt.title("Comparaison qualite en fonction du nombre d'arrets")
-    plt.legend()
+    # Temps de calcul
+    plt.figure(figsize=(12, 6))
+    positions_group1 = np.array(range(len(liste_arrets))) * 2.0 - 0.3
+    positions_group2 = np.array(range(len(liste_arrets))) * 2.0 + 0.3
+
+    # Boxplots pour le premier groupe
+    plt.boxplot(qualite_eps, positions=positions_group1, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightblue', color='blue'),
+                medianprops=dict(color='blue'),
+                whiskerprops=dict(color='blue'),
+                capprops=dict(color='blue'),
+                showfliers=False)
+
+    # Boxplots pour le deuxième groupe
+    plt.boxplot(qualite_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightgreen', color='green'),
+                medianprops=dict(color='green'),
+                whiskerprops=dict(color='green'),
+                capprops=dict(color='green'),
+                showfliers=False)
+
+    # Ajustement des labels et des positions des axes
+    plt.xticks(range(0, len(liste_arrets) * 2, 2), liste_arrets)
+    plt.xlabel('Nombre arrets')
+    plt.ylabel('Qualite resultat')
+    plt.title('Boxplot pour la qualite du resultat en fonction du nombre d arrets et de la methode')
+    plt.grid(True)
+    plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
+                plt.Line2D([0], [0], color='lightgreen', lw=4)],
+               ['Penalisation', 'Scipy'])
+
     plt.show()
 
 
 # Test 2, 3 : Comparaison (moindres carres puis entropie relative) matrices OD et matrices trouvees par les deux methodes.
-
-def distance_moindres_carres(matrice1, matrice2, n):
-    """
-    :param matrice1: Une matrice OD
-    :param matrice2: Une matrice OD
-    :param n: taille des matrices
-    :return: la distance entre les deux matrices coefficient par coefficient
-    """
-    matrice1 = np.array(matrice1)
-    matrice2 = np.array(matrice2)
-
-    # Calcul des différences
-    differences = matrice1 - matrice2
-
-    # Calcul de la somme des carres des differences au-dessus de la diagonale principale
-    res = np.sum(differences[np.triu_indices(n, k=1)] ** 2)
-
-    return res
-
-
-def distance_entropie_relative(matriceOD, matrice2, n):
-    """
-    :param matriceOD: matrice origine destination (avec des 0 potentiellement)
-    :param matrice2: matrice trouvee par optimisation
-    :param n: taille des matrices
-    :return: l'entropie relative S_matrice2(matrice_OD)
-    """
-    res = 0
-    for i in range(n):
-        for j in range(i + 1, n):
-            val_1 = matrice2[i][j]
-            val_2 = matriceOD[i][j]
-            if val_1 > 0 and val_2 > 0:
-                val_3 = matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
-                res += val_3
-    return res
-
-
 def comparaison_mc_entropie(matriceOD, name):
     matriceOD = normalisation_matrice(matriceOD)
     m, v = lagrange_to_euler(matriceOD)
     n = len(m)
     dossier = "C:/Users/garan/Documents/Stage L3/Code/bus/resultats_minimisation/"
+
+    # Test sur le vecteur marginales croisees
+    x0 = vecteur_initial(m, v, generation_matrice_numeros(n), n)
+    matrice_vecteur_marginale = initialise_matrice_from_vect(x0, n)
+    entropie_relative_vecteur_marginales = distance_entropie_relative(matriceOD, matrice_vecteur_marginale, n)
+    mc_vecteur_marginales = distance_moindres_carres(matriceOD, matrice_vecteur_marginale, n)
+    print("Pour le vecteur croisement des marginales :")
+    print("Entropie relative : " + str(entropie_relative_vecteur_marginales))
+    print("Distance moindres carres : " + str(mc_vecteur_marginales))
+    print("------" + '\n')
+
+    # Test des methodes de minimalisation den l'entropie
 
     # Test methode penalisation
     time_start = time.time()
@@ -509,10 +582,10 @@ def comparaison_mc_entropie(matriceOD, name):
         distance_mc_eps = distance_moindres_carres(matriceOD, matrice_eps, n)
 
         # Affichage du resultat
-        print("L'entropie relative pour eps est " + str(
-            entropie_relative_eps) + " et la distance au sens des moindres carres est de " + str(
-            distance_mc_eps) + " et l'operation a pris " + str(
-            time_eps) + " secondes.")
+        print("Resultats methode penalisation :")
+        print("Entropie relative : " + str(entropie_relative_eps))
+        print("Distance moindres carres " + str(distance_mc_eps))
+        print("Duree : " + str(time_eps))
         affiche_matrice_propre(matrice_eps)
     else:
         print("Pas de résultats")
@@ -538,10 +611,10 @@ def comparaison_mc_entropie(matriceOD, name):
         distance_mc_scipy = distance_moindres_carres(matriceOD, matrice_scipy, n)
 
         # Affichage du resultat
-        print("L'entropie relative pour scipy est " + str(
-            entropie_relative_scipy) + " et la distance au sens des moindres carres est de " + str(
-            distance_mc_scipy) + " et l'operation a pris " + str(
-            time_scipy) + " secondes.")
+        print("Resultats methode Scipy :")
+        print("Entropie relative : " + str(entropie_relative_scipy))
+        print("Distance moindres carres " + str(distance_mc_scipy))
+        print("Duree : " + str(time_scipy))
         affiche_matrice_propre(matrice_scipy)
     else:
         print("Pas de résultats")
@@ -585,7 +658,7 @@ if __name__ == "__main__":
     # Donnees :
 
     # Test 0 : Resultats optimisation pour les vecteurs 5 et 6 / A comparer avec les resultats de la recherche exhaustive
-    test0 = True
+    test0 = False
     if test0:
         matrice_entropie5 = [[0.0, 1.0, 1.0, 0.0, 0.0],
                              [0.0, 0.0, 1.0, 1.0, 1.0],
@@ -608,12 +681,12 @@ if __name__ == "__main__":
             "__________________________________________________________________________________________________________")
 
     # Test 1 : Comparaison de la qualite des resultats et du temps pour des vecteurs aleatoires.
-    test1 = False
+    test1 = True
     if test1:
         comparaison_methodes_qualite_temps_vect_aleatoires()
 
     # Test 2 : Comparaison par entropie relative et moindres carres avec donnes reelles
-    test2 = True
+    test2 = False
     if test2:
         print("Resultats ligne A JOB 8h45-8h59" + "\n")
         path_AJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_JOB.xlsx'
@@ -621,7 +694,7 @@ if __name__ == "__main__":
         usecols_AJOB = 'C:Q'
         firstrow_AJOB = 7
         matrice_AJOB, noms_AJOB = extraction_donnees(path_AJOB, sheet_AJOB, usecols_AJOB, firstrow_AJOB)
-        # comparaison_mc_entropie(matrice_AJOB, name='matrice_AJOB')
+        comparaison_mc_entropie(matrice_AJOB, name='matrice_AJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne A Samedi 8h45-8h59" + "\n")
         path_ASam = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_SAMEDI.xlsx'
@@ -629,7 +702,7 @@ if __name__ == "__main__":
         usecols_ASam = 'C:Q'
         firstrow_ASam = 7
         matrice_ASam, noms_ASam = extraction_donnees(path_ASam, sheet_ASam, usecols_ASam, firstrow_ASam)
-        # comparaison_mc_entropie(matrice_ASam, name='matrice_ASam')
+        comparaison_mc_entropie(matrice_ASam, name='matrice_ASam')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne B JOB 8h45-8h59" + " \n")
         path_BJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LB_JOB.xlsx'
@@ -637,7 +710,7 @@ if __name__ == "__main__":
         usecols_BJOB = 'C:Q'
         firstrow_BJOB = 7
         matrice_BJOB, noms_BJOB = extraction_donnees(path_BJOB, sheet_BJOB, usecols_BJOB, firstrow_BJOB)
-        # comparaison_mc_entropie(matrice_BJOB, name='matrice_BJOB')
+        comparaison_mc_entropie(matrice_BJOB, name='matrice_BJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne C4 JOB 8h45-8h59" + " \n")
         path_C4JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
@@ -653,5 +726,5 @@ if __name__ == "__main__":
         usecols_C7JOB = 'C:U'
         firstrow_C7JOB = 7
         matrice_C7JOB, noms_C7JOB = extraction_donnees(path_C7JOB, sheet_C7JOB, usecols_C7JOB, firstrow_C7JOB)
-        # comparaison_mc_entropie(matrice_C7JOB, name='matrice_C7JOB')
+        comparaison_mc_entropie(matrice_C7JOB, name='matrice_C7JOB')
         print("-------------------------------------------------------------------------------------------------------")
