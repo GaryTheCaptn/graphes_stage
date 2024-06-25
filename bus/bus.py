@@ -179,7 +179,7 @@ if __name__ == "__main__":
     # print_euler_to_lagrange(m6, v6)
     best = minisation_entropie(euler_to_lagrange(m6, v6))
     # euler_to_graph(noms_arrets6, m6, v6)
-    print("Matrice minimisant l'entropie pour ligne à 6 arrêts")
+    print("Matrice minimisant l'entropie pour ligne a 6 arrets")
     affiche_matrice(best)
 
     # Test sur une ligne a 5 arrets
@@ -189,5 +189,5 @@ if __name__ == "__main__":
     # print_euler_to_lagrange(m5, v5)
     best2 = minisation_entropie(euler_to_lagrange(m5, v5))
     # euler_to_graph(noms_arrets5, m5, v5)
-    print("Matrice minimisant l'entropie pour ligne à 5 arrêts")
+    print("Matrice minimisant l'entropie pour ligne a 5 arrets")
     affiche_matrice(best2)

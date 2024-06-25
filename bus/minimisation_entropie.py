@@ -14,10 +14,10 @@ def affiche_matrice_propre(M):
     Affiche la matrice M dans la console Python
     :param M: une matrice
     """
-    # Déterminer la largeur maximale d'un élément du tableau pour l'alignement
+    # Determiner la largeur maximale d'un element du tableau pour l'alignement
     largeur_max = 9
     for ligne in M:
-        # Joindre les éléments de la ligne avec un espace et les aligner à droite selon la largeur maximale
+        # Joindre les elements de la ligne avec un espace et les aligner a droite selon la largeur maximale
         ligne_formatee = " ".join(f"{str(round(item, 5)):>{largeur_max}}" for item in ligne)
         print(ligne_formatee)
     print('\n')
@@ -57,7 +57,7 @@ def normalisation_matrice(matrice):
 def generation_matrice_numeros(n):
     """
     :param n: entier, taille de la matrice
-    :return: une matrice avec les index de chaque case pour le vecteur colonne associé et des -1 pour les autres
+    :return: une matrice avec les index de chaque case pour le vecteur colonne associe et des -1 pour les autres
     """
     m = np.full((n, n), -1, dtype=int)
     index = 0
@@ -89,7 +89,7 @@ def initialise_matrice_from_vect(x, n):
     """
     :param x: un vecteur d'entiers de taille d = n*(n-1)/2
     :param n: la taille de la matrice
-    :return: la matrice de taille n dont les coefficients sur la partie supérieure (stricte) droite
+    :return: la matrice de taille n dont les coefficients sur la partie superieure (stricte) droite
     correspondent au vecteur x.
     """
     matrice = np.zeros((n, n), dtype=float)
@@ -103,16 +103,16 @@ def initialise_matrice_from_vect(x, n):
 
 def qualite_resultat(vect_resultat, m, v, n):
     """
-    :param vect_resultat: un vecteur avec les résultats d'une optimisation
-    :param m: les montées normalisées
-    :param v: les descentes normalisées
+    :param vect_resultat: un vecteur avec les resultats d'une optimisation
+    :param m: les montees normalisees
+    :param v: les descentes normalisees
     :param n: la taille de la matrice
-    :return: la qualité du résultat vis-à-vis du respect des contraintes
+    :return: la qualite du resultat vis-a-vis du respect des contraintes
     """
     matrice_resultat = initialise_matrice_from_vect(vect_resultat, n)
     dist = 0
 
-    # Convertir les listes m et v en tableaux NumPy pour les opérations vectorisées
+    # Convertir les listes m et v en tableaux NumPy pour les operations vectorisees
     m = np.array(m)
     v = np.array(v)
 
@@ -141,7 +141,7 @@ def generation_matrice_contraintes(n, matrice_numeros):
     # Matrice vierge pour les contraintes
     a = np.zeros((2 * n, d), dtype=int)
 
-    # Contraintes de montées
+    # Contraintes de montees
     for i in range(n):
         for j in range(i + 1, n):
             temp_index = matrice_numeros[i][j]
@@ -220,7 +220,7 @@ def index_ligne_colonne(index, matrice_numeros, n):
     # Convertir la matrice en un array NumPy
     matrice_numeros = np.array(matrice_numeros)
 
-    # Trouver les indices ou la valeur est egale à l'index
+    # Trouver les indices ou la valeur est egale a l'index
     result = np.where(matrice_numeros == index)
 
     if result[0].size > 0 and result[1].size > 0:
@@ -343,7 +343,7 @@ def variation_epsilon(m, d, n):
     return vector, qualite
 
 
-# Gradient à pas fixe (pas utilise)
+# Gradient a pas fixe (pas utilise)
 def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     """
     :param x0: vecteur initial (taille d)
@@ -362,19 +362,19 @@ def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     n = len(m)
 
     while iteration < itmax:
-        # Si on a pas dépassé le nombre maximal d'itéreations, alors on applique l'algorithme
+        # Si on a pas depasse le nombre maximal d'itereations, alors on applique l'algorithme
         xk = res[iteration]
         xk1 = np.array(xk - pas * fct_gradient(xk))
-        res.append(xk1)  # On ajoute l'itération en cours à la liste des itérés.
+        res.append(xk1)  # On ajoute l'iteration en cours a la liste des iteres.
 
-        # On regarde si le critère d'arrêt d'être suffisammment proche de la solution est vérifié
+        # On regarde si le critere d'arret d'etre suffisammment proche de la solution est verifie
         qual = qualite_resultat(xk1, m, v, n)
         erreurk1 = qual  # On calcule l'erreur
         if erreurk1 <= erreur:
-            # On est suffisament proche de la solution, on arrête l'algorithme.
+            # On est suffisament proche de la solution, on arrete l'algorithme.
             iteration = itmax
         else:
-            # On est pas encore assez proche, on va faire une autre itération.
+            # On est pas encore assez proche, on va faire une autre iteration.
             iteration += 1
 
     return res, qual
@@ -391,7 +391,7 @@ def distance_moindres_carres(matrice1, matrice2, n):
     matrice1 = np.array(matrice1)
     matrice2 = np.array(matrice2)
 
-    # Calcul des différences
+    # Calcul des differences
     differences = matrice1 - matrice2
 
     # Calcul de la somme des carres des differences au-dessus de la diagonale principale
@@ -435,7 +435,7 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
             montees_i = 0
             descentes_i = nbr_voyageurs_courant
 
-        # Si on est à l'avant-dernier arret, il faut faire monter toutes les personnes qui manquent
+        # Si on est a l'avant-dernier arret, il faut faire monter toutes les personnes qui manquent
         elif i == nbr_arrets - 2:
             montees_i = personnes_restantes
             descentes_i = random.randint(0, nbr_voyageurs_courant)
@@ -508,7 +508,7 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
                 capprops=dict(color='blue'),
                 showfliers=False)
 
-    # Boxplots pour le deuxième groupe
+    # Boxplots pour le deuxieme groupe
     plt.boxplot(temps_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
                 boxprops=dict(facecolor='lightgreen', color='green'),
                 medianprops=dict(color='green'),
@@ -541,7 +541,7 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
                 capprops=dict(color='blue'),
                 showfliers=False)
 
-    # Boxplots pour le deuxième groupe
+    # Boxplots pour le deuxieme groupe
     plt.boxplot(qualite_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
                 boxprops=dict(facecolor='lightgreen', color='green'),
                 medianprops=dict(color='green'),
@@ -608,7 +608,7 @@ def comparaison_mc_entropie(matriceOD, name):
         print("Duree : " + str(time_eps))
         affiche_matrice_propre(matrice_eps)
     else:
-        print("Pas de résultats")
+        print("Pas de resultats")
         print("Duree traitement : " + str(time_eps))
 
     # Test sur la methode scipy
@@ -637,7 +637,7 @@ def comparaison_mc_entropie(matriceOD, name):
         print("Duree : " + str(time_scipy))
         affiche_matrice_propre(matrice_scipy)
     else:
-        print("Pas de résultats")
+        print("Pas de resultats")
         print("Duree traitement : " + str(time_scipy))
 
     return None

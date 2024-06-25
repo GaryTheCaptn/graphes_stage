@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 
 def extraction_donnees(path, sheet, usecols, first_row):
