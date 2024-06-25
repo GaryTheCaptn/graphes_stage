@@ -38,10 +38,16 @@ def normalisation_vecteurs(m, v):
 
 
 def normalisation_matrice(matrice):
+    """
+    :param matrice: une matrice de FLOAT
+    :return: matrice normalisee
+    """
     K = np.sum(matrice)
     invK = 1 / K
+
     # Copie la partie superieure de la matrice
     matrice_normalisee = np.triu(matrice, 1)
+
     # Normalisation de la partie superieure de la matrice
     matrice_normalisee *= invK
 
@@ -53,19 +59,20 @@ def generation_matrice_numeros(n):
     :param n: entier, taille de la matrice
     :return: une matrice avec les index de chaque case pour le vecteur colonne associé et des -1 pour les autres
     """
-    M = np.full((n, n), -1, dtype=int)
+    m = np.full((n, n), -1, dtype=int)
     index = 0
     for i in range(n):
         for j in range(i + 1, n):
-            M[i, j] = index
+            m[i, j] = index
             index += 1
-    return M
+    return m
 
 
 def vecteur_initial(m, v, matrice_numeros, n):
     """
     :param m: liste d'entier (montees)
     :param v: liste d'entier (descentes)
+    :param matrice_numeros: la matrice avec les indices de vecteur
     :param n: taille des listes
     :return: le vecteur initial pour la minimisation qui correspond au produit des marginales (m_i * v_j = gamma_ij)
     """
@@ -132,26 +139,32 @@ def generation_matrice_contraintes(n, matrice_numeros):
     d = (n - 1) * n // 2
 
     # Matrice vierge pour les contraintes
-    A = np.zeros((2 * n, d), dtype=int)
+    a = np.zeros((2 * n, d), dtype=int)
 
     # Contraintes de montées
     for i in range(n):
         for j in range(i + 1, n):
             temp_index = matrice_numeros[i][j]
             if temp_index != -1:
-                A[i, temp_index] = 1
+                a[i, temp_index] = 1
 
     # Contraintes de descentes
     for j in range(n):
         for i in range(j):
             temp_index = matrice_numeros[i][j]
             if temp_index != -1:
-                A[n + j, temp_index] = 1
+                a[n + j, temp_index] = 1
 
-    return A
+    return a
 
 
 def optimisation_scipy(m, v, n):
+    """
+    :param m: liste des montees
+    :param v: liste des descentes
+    :param n: la taille des listes
+    :return: le resultat de la minimisation de l'entropie pour la methode scipy avec contraintes.
+    """
     d = (n - 1) * n // 2
 
     def entropie(x):
@@ -171,25 +184,32 @@ def optimisation_scipy(m, v, n):
         res[np.diag_indices_from(res)] = np.where(positive_indices, 1 / x, 0)
         return res
 
+    # Matrice avec les numeros d'indices pour le passage de la vue vectorielle a la vue matricielle
     matrice_numeros = generation_matrice_numeros(n)
+
+    # On cree la matrice de contraintes.
     montes_descentes = np.concatenate((m, v))
     matrice_contraintes = generation_matrice_contraintes(n, matrice_numeros)
     contraintes_montes_descentes = scipy.optimize.LinearConstraint(matrice_contraintes, montes_descentes,
                                                                    montes_descentes)
+
+    # On defini les bornes des valeurs ([0 ; +inf[)
     bnds = [(0, None) for _ in range(d)]
+
+    # Vecteur initial, croisement des marginales
     x0 = vecteur_initial(m, v, matrice_numeros, n)
 
+    # Calcul du resultat par Scipy
     resultat = scipy.optimize.minimize(entropie, x0, jac=jacobian_entropie, hess=hessian_entropie,
                                        method='trust-constr', bounds=bnds,
                                        constraints=contraintes_montes_descentes)
-
     vect_resultat = resultat.x
     qual_resultat = qualite_resultat(vect_resultat, m, v, n)
 
     return vect_resultat, qual_resultat
 
 
-# Methode de penalisaiton (algorithme perso)
+# Methode de penalisaiton
 def index_ligne_colonne(index, matrice_numeros, n):
     """
     :param index: l'index d'un x_k dans le vecteur x
@@ -310,10 +330,10 @@ def variation_epsilon(m, d, n):
     :param m: liste d'entiers des montees (normalise)
     :param d: liste d'entiers des descentes (normalise
     :param n: la longueur des listes
-    :return: On teste tous les epsilons de 0.1 jusqu'a ce qu'il n'y ait plus de resultat en divisant par 10 a chaque iteration.
-    On renvoie le meilleur vecteur et sa qualite.
+    :return: On renvoie le vecteur resultat et sa qualite. Si pas de resultat on renvoie un vecteur vide et une qualite
+     = -1
     """
-    qualite = 100000
+    qualite = -1
     eps = 0.01
     resultat = penalisation(m, d, eps, n)
     res_trouve = resultat.success
@@ -323,7 +343,7 @@ def variation_epsilon(m, d, n):
     return vector, qualite
 
 
-# Gradient à pas fixe
+# Gradient à pas fixe (pas utilise)
 def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
     """
     :param x0: vecteur initial (taille d)
