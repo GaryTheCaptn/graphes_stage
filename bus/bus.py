@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 
 # Passage de donnees lagrangiennes a euleriennes
@@ -176,18 +177,22 @@ if __name__ == "__main__":
     noms_arrets6 = ["A1", "A2", "A3", "A4", "A5", "A6"]
     m6 = [5, 4, 6, 3, 1, 0]
     v6 = [0, 2, 4, 3, 5, 5]
-    # print_euler_to_lagrange(m6, v6)
-    best = minisation_entropie(euler_to_lagrange(m6, v6))
+    time_start = time.time()
+    print_euler_to_lagrange(m6, v6)
+    print("durée " + str(time.time() - time_start))
+    # best = minisation_entropie(euler_to_lagrange(m6, v6))
     # euler_to_graph(noms_arrets6, m6, v6)
-    print("Matrice minimisant l'entropie pour ligne a 6 arrets")
-    affiche_matrice(best)
+    # print("Matrice minimisant l'entropie pour ligne a 6 arrets")
+    # affiche_matrice(best)
 
     # Test sur une ligne a 5 arrets
     noms_arrets5 = ["A1", "A2", "A3", "A4", "A5"]
     m5 = [2, 3, 1, 2, 0]
     v5 = [0, 1, 2, 2, 3]
-    # print_euler_to_lagrange(m5, v5)
-    best2 = minisation_entropie(euler_to_lagrange(m5, v5))
+    time_start = time.time()
+    print_euler_to_lagrange(m5, v5)
+    print("durée " + str(time.time() - time_start))
+    # best2 = minisation_entropie(euler_to_lagrange(m5, v5))
     # euler_to_graph(noms_arrets5, m5, v5)
-    print("Matrice minimisant l'entropie pour ligne a 5 arrets")
-    affiche_matrice(best2)
+    # print("Matrice minimisant l'entropie pour ligne a 5 arrets")
+    # affiche_matrice(best2)
