@@ -7,6 +7,7 @@
 \usepackage{float}
 \usepackage{color}
 \usepackage{xcolor}
+\usepackage{tikzducks}
 \usepackage{lipsum}
 \usepackage{amsmath,amsthm}
 \usepackage{amssymb}
@@ -54,64 +55,77 @@ draw=black]
 \newcommand{\I}{\mathbf{I}}
 \newcommand{\dcrochetg}{[\![}
 \newcommand{\dcrochetd}{]\!]}
-\newcommand{\defin}{\underline{Définition :}}
-\newcommand{\thm}{\underline{Théorème :}}
-\newcommand{\rmq}{\underline{Remarque :}}
-\newcommand{\prop}{\underline{Proposition :}}
-\newcommand{\demo}{\underline{Démonstration :}}
-\newcommand{\lemme}{\underline{Lemme :}}
+\newcommand{\defin}{\underline{Définition :} }
+\newcommand{\thm}{\underline{Théorème :} }
+\newcommand{\rmq}{\underline{Remarque :} }
+\newcommand{\prop}{\underline{Proposition :} }
+\newcommand{\demo}{\underline{Démonstration :} }
+\newcommand{\lemme}{\underline{Lemme :} }
+\newcommand{\exemple}{\underline{Exemple :} }
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
 
-\title{Compte rendu de stage}
+\title{\textbf{Reconstruction de matrices Origine-Destination à partir de flux de voyageurs}\\
+Compte rendu de stage de L3}
 \author{Garance Malnoë\\
-Stage sous la direction de Sylvain Faure\\
+encadrée par Sylvain Faure et Bertrand Maury\\ \vspace{0.1cm}
 Institut de Mathématiques d'Orsay}
 \date{Mai - Juin 2024}
 \begin{document}
 \maketitle
+\newpage
 \tableofcontents
 \newpage
 \section{Introduction}
- Une super introduction.
+La compréhension des différents flux de voyageurs est un enjeu important pour optimiser les réseaux routiers et de transports en commun, ainsi que pour le développement de nouvelles infrastructures adaptées aux besoins des usagers.\\
+\\
+Les mathématiques, et notamment la modélisation par des graphes, offrent des outils utiles pour aborder cette problématique. Ce rapport se concentre sur la reconstruction des trajets des voyageurs à partir des données de montées et descentes de lignes linéaires.\\
+\\
+Nous commençons par définir les notions de données eulériennes et lagrangiennes et la problématique du passage de l'un à l'autre. Nous nous intéressons par la suite à la description de l'ensemble des scénarios lagrangiens correspondants à des données eulériennes pour un réseau linéaire, notamment par le biais de deux algorithmes. Ensuite, nous regardons deux méthodes d'optimisation de la fonction entropie permettant de sélectionner un scénario lagrangien que nous mettons alors en œuvre en Python. Enfin, nous nous intéressons à deux méthodes probabilistes de sélection de scénario issues d'une problématique similaire.\\
 \section{Passage de données eulériennes à lagrangiennes}
-Les termes "eulérien" et "lagrangien" font référence à deux manières d'appréhender des phénomènes de transport ou de mouvement. Ils sont couramment utilisés en mécanique des fluides, mais ils peuvent plus généralement s'appliquer à toutes les entités évoluant dans un espace (un  espace physique comme un espace plus abstrait). Ils permettent de qualifier à la fois la manière dont peuvent être recueillies des données de positions ou d'état des entités considérées et l'approche adoptée pour écrire des modèles visant à décrire ces phénomènes de mouvement.
+Cette partie s'appuie sur le poly du cours de modélisation de Bertrand Maury \cite{poly_bertrand_maury}.\\
+\\
+Les termes "eulérien" et "lagrangien" désignent deux approches différentes de l'analyse des phénomènes de transport et de mouvement. Bien qu'ils soient couramment utilisés dans le domaine de la mécanique des fluides, ils peuvent plus généralement s'appliquer à la description du mouvement de toute entité évoluant dans un espace (physique ou plus abstrait). Ils permettent de décrire la manière dont sont recueillies les données, mais aussi l'approche utilisée pour élaborer les modèles décrivant ces phénomènes de mouvement.
 \subsection{Données lagrangiennes}
-La description lagrangienne consiste à suivre les entités tout au long de leur mouvement à partir de leur position d'origine.\\
+La description lagrangienne consiste à suivre les entités à partir de leur position d'origine puis tout au long de leur mouvement.\\
 \\
-Si l'on considère, par exemple, un ensemble de $N$ particules évoluant dans l'espace physique $\mathbb{R}^d$, la donnée de leurs positions au cours du temps $t \mapsto x(t) = (x_i(t))_{i \in \dcrochetg1;N\dcrochetd} \in \R^d $ est lagrangienne. De la même manière, la collection des vitesses au cours du temps des $N$ particules $(u_i(t))_{i \in \dcrochetg1;N\dcrochetd} $ où $u_i = x'_i(t)$ est une donnée lagrangienne.\\
+Si l'on considère, par exemple, un ensemble de $N$ particules évoluant dans l'espace physique $\mathbb{R}^d$, la collection de leurs positions au cours du temps $t \mapsto x(t) = (x_i(t))_{i \in \dcrochetg1;N\dcrochetd} \in \R^d $ est lagrangienne : on suit chaque particule de manière individuelle.\\
 \\
-Par la suite, nous nous intéresserons aux déplacements d'individus sur un territoire donné. Pour cela, nous pouvons, par exemple, récupérer les données GPS d’un téléphone portable au cours des déplacements de son propriétaire. Ces données sont de nature lagrangiennes : même si le droit ne permet pas de les stocker avec l’identité de la personne suivie, un identifiant d’anonymisation permet d’associer plusieurs positions successives à un seul individu.
+Par la suite, nous nous intéresserons aux déplacements d'individus sur un réseau de transports en commun. Pour étudier ces déplacements, on peut récupérer les données GPS des voyageurs à partir de leur téléphone. Bien-sûr, la loi ne nous permet pas de stocker l'identité de la personne suivie, mais un identifiant d'anonymisation nous permet d'associer plusieurs positions successives à un seul individu : ce sont des données lagrangiennes.
 \subsection{Données eulériennes}
-La description eulérienne est basée sur l'observation de zones de l'espace dans lequel le mouvement s'effectue. On regarde "ce qu'il se passe" dans la zone sans prendre en compte l'identité des entités observées.\\
+La description eulérienne ne se base pas sur l'observation de chaque entité, mais sur l'observation de zones de l'espace dans lesquelles le mouvement s'effectue. On regarde "ce qu'il se passe" dans chaque zone sans tenir compte de l'identité des entités qui se trouvent dans la zone.\\
 \\
-En se replaçant dans le cadre de l'étude des déplacements sur un territoire, la mesure du nombre de passages à l'entrée ou la sortie d'une gare au cours du temps ou du nombre de voitures sur un tronçon de route au cours du temps sont des données de nature eulérienne.
+Dans le cadre d'une étude des déplacements de voyageurs sur un territoire, la mesure du nombre de passages dans les gares au cours du temps ou du nombre de voitures sur un tronçon de route au cours du temps sont des données de nature eulérienne.
 
 \subsection{Passage de l'un à l'autre}
-Après avoir récupéré des données de nature lagrangienne ou eulérienne, il peut être pertinent de se demander s'il est possible de transformer ces données en données de l'autre nature.\\
+Lorsque l'on possède des données de nature lagrangienne ou eulérienne, il peut être pertinent de se demander s'il est possible d'en changer la nature.\\
 \\
-Il est souvent possible de passer de la vision lagrangienne à la vision eulérienne. Faisons l'exemple avec la modélisation des trajectoires de $N$ particules dans un espace donné. On introduit la notion de masse ponctuelle : à une particule située en un point $x$ de l'espace, on associe la mesure $\delta_x$ qui est une application de l'ensemble des parties de l'espace dans $\R_+$ (ou plus simplement $\N$ si on se limite à compter des entités). Pour $A  \subset \R^d$, on dit que $\delta_x(A)$ vaut 1 si $x \in A$, 0 sinon. Si deux particules se trouvent au même endroit, on applique une règle de sommation : $\delta_x + \delta_x = 2\delta_x$. On peut alors sommer ces objets pour obtenir une mesure qui encode l'ensemble des positions des particules au temps $t$ : \[ \mu_t = \sum_{i=1}^{N} \delta_{x_i(t)}\] Cette identité exprime que, pour tout ensemble $A$, $\mu_t(A)$ est le nombre d'entités qui se trouvent dans la zone $A$ à l'instant $t$.\\
+Il est souvent possible de passer de la vision lagrangienne à la vision eulérienne. En effet, reprenons l'exemple de la modélisation des trajectoires de $N$ particules dans $\Rd$ avec les positions au cours du temps $t \mapsto x(t) = (x_i(t))_{i\in\dcrochetg1;N\dcrochetd}$ comme données lagrangiennes. On introduit la notion de masse ponctuelle : à une particule située en un point $x$ de l'espace, on associe la mesure $\delta_x$ qui est une application de l'ensemble des parties de l'espace dans $\R_+$ (ou plus simplement $\N$ si on se limite à compter des entités). Pour $A  \subset \R^d$, on dit que $\delta_x(A)$ vaut 1 si $x \in A$, 0 sinon. Si deux particules se trouvent au même endroit, on applique une règle de sommation : $\delta_x + \delta_x = 2\delta_x$. On peut alors faire la somme des masses ponctuelles pour chacune des $N$ particules pour obtenir une mesure qui décrit l'ensemble des positions des particules au temps $t$ : 
+\[ \mu_t = \sum_{i=1}^{N} \delta_{x_i(t)}.\] 
+Cette identité exprime que, pour tout ensemble $A \subset \Rd$, $\mu_t(A)$ est le nombre d'entités qui se trouvent dans la zone $A$ à l'instant $t$ : on a obtenu une donnée de nature eulérienne.\\
 \\
-Cependant, bien que $\mu_t$ soit définie à partir des $x_i(t)$, l'information contenue dans $\mu$ est dégradée par rapport à la collection $(x_i)$ puisque les labels ont été perdus dans la somme : on ne sait plus qui est où. Plus précisément, si les positions sont distinctes deux à deux, une même mesure $\mu_t$ correspond à un grand nombre de distributions possibles des entités. Formellement, pour toute permutation $\varphi \in S_N$, on a : \[ \sum_{i=1}^{N} \delta_{x_i(t)} = \sum_{i=1}^{N} \delta_{x_{\varphi(i)}(t)}\]\\
+Bien que $\mu_t$ soit définie à partir des $x_i(t)$, l'information contenue dans $\mu$ est dégradée par rapport à la collection $(x_i)$ puisque l'identité de chaque particule a été perdue dans la somme : on ne sait plus qui est où. Plus précisément, si les positions sont distinctes deux à deux, une même mesure $\mu_t$ correspond à un grand nombre de scénarios possibles pour les entités. Formellement, pour toute permutation $\varphi \in S_N$, on a : \[ \sum_{i=1}^{N} \delta_{x_i(t)} = \sum_{i=1}^{N} \delta_{x_{\varphi(i)}(t)}.\]\\
 \\
-Ce manque d'information dans le point de vue eulérien empêche souvent le passage du point de vue eulérien au point de vue lagrangien. C'est un problème mal posé, plusieurs scénarios lagrangiens correspondent aux données eulériennes et il n'y a  \textit{a priori} pas un scénario qui soit plus plausible que les autres à moins de rajouter des hypothèses.\\
+Ce manque d'information empêche souvent le passage du point de vue eulérien au point de vue lagrangien. C'est un problème mal posé : plusieurs scénarios lagrangiens correspondent aux données eulériennes et il n'y a pas \textit{a priori}  un scénario qui soit plus plausible que les autres, à moins de rajouter des hypothèses.\\
 \\
-Une autre différence importante entre les deux points de vue se trouve au niveau de la récolte des données. Reprenons le cas de déplacements au sein d'un territoire donné. Pour récupérer des données eulériennes, il est possible d'installer des capteurs infrarouges à chaque porte des trains circulant sur le territoire pour compter les montées et les descentes des voyageurs et il est également possible de compter le nombre de voitures sur un tronçon de route à l'aide des caméras placées sur les routes. Pour récupérer des données lagrangiennes, on peut suivre les usagers tout au long de leur déplacement à l'aide des données GPS de leur téléphone ou bien mettre en place une enquête pour demander directement aux gens quel parcours ils ont empruntés comme cela avait été fait à \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{Rennes en 2023} mais cela demande des dispositifs plus conséquents que pour les données eulériennes. Si bien que dans la réalité, il parfois plus simple de récupérer des données eulériennes que des données lagrangiennes.\\
+Une autre différence importante entre les deux points de vue se trouve au niveau de la récolte des données. Reprenons le cas de déplacements au sein d'un territoire donné par exemple. Pour récupérer des données eulériennes, on peut, par exemple, installer des capteurs infrarouges aux portes des trains circulant sur le territoire pour compter les montées et les descentes des voyageurs ou on peut compter le nombre de voitures sur les tronçons de route à l'aide des caméras. Pour la récupération de données lagrangiennes, on peut suivre les usagers tout au long de leur déplacement à l'aide des données GPS de leur téléphone ou bien mettre en place une enquête pour demander directement aux gens quel parcours ils ont empruntés comme cela avait été fait à \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{Rennes en 2023}, mais ces deux dernières options demandent des dispositifs plus conséquents. Dans la réalité, il est souvent plus simple de récupérer des données eulériennes que des données lagrangiennes.\\
 \\
-Ainsi, dans la suite de cette section, nous nous intéresserons au passage du point de vue eulérien vers le point de vue lagrangien pour la modélisation des déplacements sur un réseau.
+Ainsi, dans la suite de ce rapport, nous nous intéresserons au passage du point de vue eulérien vers le point de vue lagrangien pour la modélisation des déplacements sur un réseau de transport en commun linéaire.
 \section{Réseau linéaire : exemple d'une ligne de bus}
 \subsection{Cadre théorique}
-Nous nous intéressons ici à une ligne de bus avec $N+1$ arrêts numérotés de 0 à $N$ et on s'intéresse seulement au sens croissant des arrêts. Nous supposons que nous avons pu récupérer des données eulériennes sur les déplacements des usagers de la ligne : à chaque arrêt $i \in \dcrochetg 0;N\dcrochetd$, on a compté le nombre de montées $\mu_i$, le nombre de descentes $\nu_i$ et le nombre de personnes à voyager entre l'arrêt $i$ et l'arrêt $i+1$, $\rho_i$. On note alors $\mu, \nu \in \R^{N+1}$ et $\rho \in \R^N$ les vecteurs associés et on considère que $\nu_0 = \mu_N = 0$. Enfin, on peut introduire la quantité $b \in \R^{N+1}$ où $b_i = \mu_i - \nu_i$ le bilan de montée-descente de l'arrêt $i$.\\
+Nous nous intéressons ici à une ligne de bus avec $N+1$ arrêts numérotés de 0 à $N$ et nous regardons seulement le sens croissant des arrêts. Nous supposons que nous avons pu récupérer des données eulériennes sur les déplacements des usagers de la ligne : à chaque arrêt $i \in \dcrochetg 0;N\dcrochetd$, on a compté le nombre de montées $\mu_i$, le nombre de descentes $\nu_i$ et le nombre de personnes à voyager entre l'arrêt $i$ et l'arrêt $i+1$, $\rho_i$. On note alors $\mu, \nu \in \R^{N+1}$ et $\rho \in \R^N$ les vecteurs associés et on considère que $\nu_0 = \mu_N = 0$. Enfin, on introduit la quantité $b \in \R^{N+1}$ où $b_i = \mu_i - \nu_i$ le bilan de montée-descente de l'arrêt $i$.\\
 \\
-L'objectif est de retrouver les déplacements de chaque usager à partir de $\mu,\: \nu$ et $\rho$. On souhaite savoir combien de personnes sont montées à l'arrêt $i$ pour descendre à l'arrêt $j$ = $\gamma_{ij}$. On note $\gamma = (\gamma_{ij})$ le plan origine-destination. On définit également le plan origine-destination normalisée $\tilde{\gamma}$ par : \[\tilde{\gamma}_{ij} = \frac{\gamma_{ij}}{\mu_i} \qquad i < N,\quad i<j\leq N\] 
-
-On note $\Gamma$ l'ensemble des plans Originie-Destination $\gamma$ qui vérifient les données de montées et des descentes, $\mu$ et $\nu$ :
+L'objectif est de retrouver les déplacements de chaque usager à partir de $\mu,\: \nu$ et $\rho$. On souhaite savoir combien de personnes sont montées à l'arrêt $i$ pour descendre à l'arrêt $j$ = $\gamma_{ij}$. On note $\gamma = (\gamma_{ij})_{ij}$ le plan origine-destination. On définit également le plan origine-destination normalisé $\tilde{\gamma}$ par : 
+\[\tilde{\gamma}_{ij} = \frac{\gamma_{ij}}{\mu_i} \qquad i \leq N,\quad i\leq j\leq N.\] 
+On note $\Gamma$ l'ensemble des plans Origine-Destination $\gamma$ qui vérifient les données de montées et des descentes, $\mu$ et $\nu$ :
 \[
-\Gamma = \{\gamma \quad | \quad \sum^{N}_{i=0} \gamma_{ij} = \nu_j\:\text{ et }  \sum^{N}_{j=0} \gamma_{ij} = \mu_i\}
+\Gamma = \{\gamma \quad | \quad \sum^{N}_{i=0} \gamma_{ij} = \nu_j\:\text{ et }  \sum^{N}_{j=0} \gamma_{ij} = \mu_i\}.
 \]
 Ainsi défini, $\gamma_i = (\gamma_{ij})_j$ est une loi de probabilité supportée par $\dcrochetg i+1;N\dcrochetd$ et qui décrit la distribution des destinations des voyageurs montés à l'arrêt $i$.\\
 \\
 Tout d'abord, on peut s'intéresser aux liens entre les différentes quantités eulériennes : $\rho, \:\nu,\:\mu$ et $b$.\\
 \\
-\prop \[\forall i \in \dcrochetg0;N-1\dcrochetd, \quad \rho_i = \sum^i_{j=0} bj\]
+\prop \[\forall i \in \dcrochetg0;N-1\dcrochetd, \quad \rho_i = \sum^i_{j=0} bj \:.\]
 \demo\\
 On procède par récurrence.\\
 - Initialisation : au départ de la première station, on a :
@@ -119,11 +133,11 @@ On procède par récurrence.\\
 \]
 - Hérédité : supposons l'hypothèse vraie pour un $i \in \dcrochetg0;N-1\dcrochetd$. Montrons qu'elle est vraie à l'étape $i+1$ :\\
 \space
-$\rho_{i+1}$ = les voyageurs entre $i$ et $i+1$ + les voyageurs montants en $i+1$ - les voyageurs descendants en $i+1$ = $\rho_i + \mu_{i+1} - \nu_{i+1} = \sum^{i+1}_{j=0} bj$.\\
+$\rho_{i+1}$ = les voyageurs entre $i$ et $i+1$ + les voyageurs montants en $i+1$ - les voyageurs descendants en $i+1$ = $\rho_i + \mu_{i+1} - \nu_{i+1} = \sum^{i+1}_{j=0} b_j$.\\
 \\
 \prop $\:$On fixe $\rho_{-1} = \rho_N = 0$. On a alors :
 \[\forall i \in \dcrochetg0;N\dcrochetd, \quad b_i = \rho_i - \rho_{i-1}\]
-\demo \\$\: b_i = $ la différence entre les voyageurs partant de $i$ et ceux partis de $i-1$ arrivés en $i = \rho_{i-1} - \rho_i$.\\
+\demo \\$\: b_i = $ la différence entre les voyageurs partant de $i$ et ceux partis de $i-1$ = $\rho_i - \rho_{i-1}$.\\
 \\
 On a également une relation entre $\gamma, \mu$ et $b$ sous la forme $G\mu = b$ où G est une matrice qui dépend du plan normalisé $\Tilde{\gamma}$.\\
 \\
@@ -160,7 +174,7 @@ b_N\\
 \end{pmatrix}
 \]
 \end{adjustwidth}
-\demo \[b_i = \mu_i - \nu_i =  \sum^N_{j=i+1} \gamma_{ij} - \sum^{i-1}_{j=0} \gamma_{ji} = \sum^N_{j=i+1} \Tilde{\gamma}_{ij}\times\mu_i\: - \:\sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j =  (\textcolor{blue}{\sum^N_{j=i+1} \Tilde{\gamma}_{ij}})\times\textcolor{blue}{\mu_i} \: \; \textcolor{red}{- \: \sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j} \]
+\demo \[b_i = \mu_i - \nu_i =  \sum^N_{j=i+1} \gamma_{ij} - \sum^{i-1}_{j=0} \gamma_{ji} = \sum^N_{j=i+1} \Tilde{\gamma}_{ij}\times\mu_i\: - \:\sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j =  (\textcolor{blue}{\sum^N_{j=i+1} \Tilde{\gamma}_{ij}})\times\textcolor{blue}{\mu_i} \: \; \textcolor{red}{- \: \sum^{i-1}_{j=0} \Tilde{\gamma}_{ji}\times\mu_j} \:.\]
 \\
 Mais avec nos données eulériennes, on ne connait pas précisément $\gamma$ ni $\Tilde{\gamma}$, néanmoins nous avons plusieurs informations. On se concentrera sur $\gamma$ :\\
 \begin{itemize}
@@ -186,14 +200,16 @@ On a donc une matrice de la forme suivante :
 
 Pour trouver les valeurs des termes $\gamma_{ij}$ restants, on peut mettre en place différents algorithmes, nous allons en voir deux.
 \subsection{Algorithme naïf}
-Le premier algorithme mis en place a été un algorithme "naturel", celui fait pour se faire la main sur un petit exemple avec seulement quelques arrêts et de petites valeurs. On suppose que les valeurs de $\mu,\:\nu,\:\rho$ sont valides : il y a au moins une matrice $\gamma$ qui correspond à ces données.\\
+Le premier algorithme est un algorithme "naturel", mis en place pour se faire la main sur un exemple avec seulement quelques arrêts et de petites valeurs.\\
+\\
+On suppose que les valeurs de $\mu,\:\nu,\:\rho$ sont valides : il y a au moins une matrice $\gamma$ qui correspond à ces données. On dira qu'une matrice est correctement remplie si la somme de lignes et la somme des colonnes correspond aux vecteurs de montées et de descentes.\\
 \\
 \begin{algorithm}
 \caption{Algorithme de remplissage de matrice}
 \begin{algorithmic}
     \State Initialiser une matrice $M$ remplie de 0.
     \If{la matrice est correctement remplie}
-        \State La matrice nulle est la seule solution, arrêt.
+        \State La matrice nulle est la seule solution, c'est le cas où il n'y a aucun voyageur, arrêt.
     \Else
         \State Faire une hypothèse sur $\gamma_{02}$, commencer par $\gamma_{02} = 0$.
         \State (*) On regarde ce que cela implique : y a-t-il des cases dont on est sûr de connaitre la valeur à partir des hypothèses sur la valeur de la somme des colonnes et des lignes ? On remplit alors ces cases avec les valeurs correspondantes en faisant attention aux contradictions (ex : une case doit valoir 2 pour que la condition sur la somme de la ligne soit vérifiée mais elle doit valoir 3 pour que la condition sur la colonne soit vérifiée).
@@ -210,18 +226,17 @@ Le premier algorithme mis en place a été un algorithme "naturel", celui fait p
     \EndIf
 \end{algorithmic}
 \end{algorithm}
-Voici un exemple pour une ligne de bus à 5 arrêts.\\
+Voici un exemple pour une ligne de bus à cinq arrêts (\ref{fig:graphe_5arrets}) :\\
 \begin{figure}[H]
     \centering
     \includegraphics[width=12cm]{Images/Passage_euler_lagrange/graphe_euler_5arrets.png}
     \caption{Représentation ligne de bus à 5 arrêts à partir de données eulériennes}
     \label{fig:graphe_5arrets}
 \end{figure}
-\[ \text{On a : }
-\mu = (2,\:3,\:1,\:2,\:0), \quad \nu = (0,\:1,\:2,\:2,\:3), \quad \rho = (2,\:1,\:2,\:2,\:3)
+\[ \text{On prend : }
+\mu = (2,\:3,\:1,\:2,\:0), \quad \nu = (0,\:1,\:2,\:2,\:3), \quad \rho = (2,\:4,\:3,\:3).
 \]
 La première matrice $\gamma$ trouvée par l'algorithme est la suivante :\\
-
 \begin{minipage}{.1\textwidth}%
 \begin{adjustwidth}{-2cm}{-1cm}
 
@@ -302,7 +317,7 @@ Voici les 4 autres matrices $\gamma$ qui vérifient les conditions sur $\mu,\:\n
 \newline
 
 \subsection{Algorithme de recherche exhaustive}
-Le deuxième algorithme est un algorithme de recherche exhaustive (backtracking) qui est assez proche de l'algorithme naïf. Il consiste à explorer toutes les configurations possibles et à retenir celles qui satisfont les conditions. Voici le code Python de l'algorithme, on peut retrouver le code entier en annexe du rapport ou sur \href{https://github.com/GaryTheCaptn/graphes_stage}{GitHub}.
+Le deuxième algorithme est un algorithme de recherche exhaustive (backtracking) qui est assez proche de l'algorithme naïf. Il consiste à explorer toutes les configurations possibles et à retenir celles qui satisfont les conditions. Voici le code Python de l'algorithme, on peut retrouver le code entier en annexe du rapport (\ref{annexe}) ou sur \href{https://github.com/GaryTheCaptn/graphes_stage}{GitHub}.
 \begin{lstlisting}
 def euler_to_lagrange(m, v):
     """
@@ -364,7 +379,7 @@ def euler_to_lagrange(m, v):
 \end{lstlisting}
 Pour le réseau de bus à 5 arrêts (\ref{fig:graphe_5arrets}), on retrouve bien les mêmes cinq matrices Origine-Destination qu'avec l'algorithme naïf.\\
 \\
-On a également pu tester l'algorithme sur d'autres petites lignes de bus. Un autre exemple avec 6 arrêts (\ref{graphe_euler_6arrêts}) et des valeurs un tout petit peu plus grandes :\\
+On a également pu tester l'algorithme sur d'autres petites lignes de bus. Un autre exemple avec 6 arrêts (\ref{graphe_euler_6arrêts}) et des valeurs un peu plus grandes :\\
 \[ 
 \mu = (5,\:4,\:6,\:3,\:1,\:0), \quad \nu = (0,\: 2,\: 4, \:3,\: 5,\: 5)
 \]
@@ -374,35 +389,35 @@ On a également pu tester l'algorithme sur d'autres petites lignes de bus. Un au
     \caption{Représentation ligne de bus à 6 arrêts à partir de données eulériennes}
     \label{graphe_euler_6arrêts}
 \end{figure}
-Avec l'algorithme exhaustif, on obtient 200 matrices Origine-Destination qui correspondent aux données de montées et descentes. On voit que le nombre de matrices augmente très rapidement dès lors que l'on augmente le nombre d'arrêts et les valeurs dans les vecteurs $\mu$ et $\nu$.\\
+Avec l'algorithme exhaustif, on obtient 200 matrices Origine-Destination qui correspondent aux données de montées et descentes.\\
 \\
-L'augmentation des valeurs et du nombre d'arrêts entraîne également l'augmentation du nombre de possibilités de matrices et donc le temps de calcul. La complexité de l'algorithme exhaustif est exponentielle dans le pire cas. En effet :\\
+On voit que le nombre de scénarios correspondant aux données eulériennes augmente très rapidement dès lors que l'on augmente le nombre d'arrêts et les valeurs dans les vecteurs $\mu$ et $\nu$. Cette augmentation du nombre de possibilités s'accompagne également par une forte augmentation du temps de calcul (14.9 secondes pour le graphe à 6 arrêts contre 0.02 secondes pour le graphe à 5 arrêts).\\
 \\
-Pour ligne à $N$ arrêts, il faut remplir une matrice Origine-Destination de taille $N^2$. Pour chaque coefficient $\gamma_{ij}$, il faut tester toutes les valeurs possibles entre 0 et $min(m_i;v_j)$ sauf pour ceux qui sont fixées à zéro qui représentent environ la moitié des cellules. La complexité totale peut donc être approximée par $O(k^{N^2/2})$ où $k$ est le nombre moyen de valeurs possibles par cellules.\\
+En fait, la complexité de l'algorithme exhaustif est exponentielle dans le pire cas. En effet : pour ligne à $N$ arrêts, il faut remplir une matrice Origine-Destination de taille $N^2$. Pour chaque coefficient $\gamma_{ij}$, il faut tester toutes les valeurs possibles entre 0 et $min(m_i;v_j)$ sauf pour ceux qui sont fixées à zéro qui représentent environ la moitié des cellules. La complexité totale peut donc être approximée par $O(k^{N^2/2})$ où $k$ est le nombre moyen de valeurs possibles par cellules.\\
 \\
-Ainsi, avec cet algorithme, on est assez vite limités par les capacités de calcul de la machine. On doit se limiter à quelques arrêts avec peu de voyageurs, ce qui n'est pas très adapté à une utilisation réelle.
+Ainsi, avec cet algorithme, on est assez vite limités par les capacités de calcul de la machine. On doit se restreindre à quelques arrêts avec peu de voyageurs, ce qui n'est pas très adapté à une utilisation réelle.
 \section{Sélection d'un plan Origine-Destination}
-Les deux algorithmes décrits ci-dessus, renvoient l'ensemble des matrices correspondantes, mais il est intéressant de se demander si certains scénarios sont plus plausibles que d'autres et comment les sélectionner. Pour cela, on s'intéresse à la notion d'entropie.\\
+Les deux algorithmes décrits ci-dessus, renvoient l'ensemble des matrices correspondantes aux données de montées et de descentes, mais il est intéressant de se demander si certains scénarios sont plus plausibles que d'autres et comment les sélectionner. On s'intéresse à la notion d'entropie :\\
 \\
 \defin\\
 On considère une variable aléatoire discrète $p$ qui prend ses valeurs dans un ensemble de cardinal n. La loi de p est décrite par :
-\[p = (p_1,p_2,...,p_n),\quad p_i \geq 0,\quad \sum p_i = 1\]
+\[p = (p_1,p_2,...,p_n),\quad p_i \geq 0,\quad \sum p_i = 1.\]
 On définit l'entropie de la variable aléatoire $p$ comme
-\[S(p) = \sum p_i log(p_i)\]
+\[S(p) = \sum p_i log(p_i).\]
 \rmq $\:$
-Il existe également une définition de l'entropie avec un signe $-$ .\\
+Il existe également une définition de l'entropie où l'on prend l'opposé de cette définition.\\
 \\
-Pour une ligne de bus donnée, on introduit $K = \sum_{i,j} \gamma_{ij} $ le nombre de voyageurs total. On peut alors voir le plan Origine-Destination $\gamma$ comme une variable aléatoire dont les issues sont les trajets $i \longrightarrow j$ et dont la loi de probabilité est décrite par :
+\label{def entropie plan OD}Pour une ligne de bus donnée, on introduit $K = \sum_{i,j} \gamma_{ij} $ le nombre de voyageurs total. On peut alors voir le plan Origine-Destination $\gamma$ comme une variable aléatoire dont les issues sont les trajets $i \longrightarrow j$ et dont la loi de probabilité est décrite par :
 \[
-\mathbb{P}(i \longrightarrow j) = \Bar{\gamma}_{ij} = \frac{\gamma_{ij}}{K}
+\mathbb{P}(\gamma = i \longrightarrow j) = \Bar{\gamma}_{ij} = \frac{\gamma_{ij}}{K}.
 \]
 \prop $\:$ L'entropie d'un plan Origine-Destination $\gamma$ est donc :
-\[S(\gamma) = \sum_{i,j}\Bar{\gamma}_{ij}log(\Bar{\gamma}_{ij})
+\[S(\gamma) = \sum_{i,j}\Bar{\gamma}_{ij}log(\Bar{\gamma}_{ij}).
 \]
 \\
 On peut interpréter l'entropie comme une mesure du désordre ou, dans notre cas, une mesure de la diversité des déplacements des voyageurs. Une entropie minimale correspond à une répartition relativement uniforme entre les trajets possibles, il est difficile de prédire le trajet que fera un voyageur. Au contraire, une grande entropie traduit la présence de trajets plus populaires que d'autres.\\
 \\
-Nous faisons l'hypothèse qu'il y a une répartition uniforme des trajets et donc on cherche la matrice OD qui minimise l'entropie.\\
+Pour sélectionner un scénario (ou une matrice). Nous faisons l'hypothèse d'une répartition uniforme des trajets et on cherche donc la matrice Origine-Destination qui minimise l'entropie.\\
  \\
 \prop$\:$ C'est un problème de minimisation d'une fonctionnelle strictement convexe sur un compact convexe, il admet donc une unique solution. (cf. section \ref{theorie optimisation})
 \subsection{Calcul de l'entropie sur l'ensemble des solutions}
@@ -423,9 +438,9 @@ Pour la ligne de bus à 5 arrêts (\ref{fig:graphe_5arrets}), c'est la matrice s
     \caption{Représentation ligne de bus à 5 arrêts minimisant l'entropie}
     \label{graphe_lagrange_5arrêts}
 \end{figure}
-Les valeurs et la longueur de cette ligne étant très petites, on ne peut pas en tirer grand-chose mais on voit apparaite. La figure (\ref{graphe_lagrange_5arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.\\
+Les valeurs et la longueur de cette ligne étant très petites, on ne peut pas vraiment interpréter le résultat. La figure (\ref{graphe_lagrange_5arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.\\
 \\
-Pour la ligne à 6 arrêts (\ref{graphe_euler_6arrêts}), c'est la matrice suivante qui minimise l'entropie.  La figure (\ref{graphe_lagrange_6arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.
+Pour la ligne à six arrêts (\ref{graphe_euler_6arrêts}), c'est la matrice suivante qui minimise l'entropie.  La figure (\ref{graphe_lagrange_6arrêts}) représente le graphe de la ligne de bus avec en bleu les trajets des voyageurs.
  \[\gamma = 
 \begin{pmatrix}
 0 & 2 & 2 & 0 & 0 & 1\\
@@ -441,16 +456,16 @@ Pour la ligne à 6 arrêts (\ref{graphe_euler_6arrêts}), c'est la matrice suiva
     \caption{Représentation ligne de bus à 6 arrêts minimisant l'entropie}
     \label{graphe_lagrange_6arrêts}
 \end{figure}
-Dans ce cas, on voit apparaitre clairement la forte répartition des trajets.\\
+Dans ce cas, on voit apparaitre plus clairement la forte répartition des trajets : il y a de nombreux trajets différents et aucun n'est privilégié, les voyageurs sont répartis assez uniformément.\\
 \\
-L'avantage de cette méthode est qu'elle renvoie une matrice correcte (\textit{ie} qui respecte totalement les contraintes de montées et de descentes) et qu'elle est composée d'entiers. Un important désavantage est qu'elle nécessite d'avoir au préalable calculé l'ensemble des matrices correspondantes, cependant, nous avons vu précédemment que les méthodes pour faire cela était très lentes. Cela peut donc fonctionner pour de petites lignes avec de petites valeurs (moins d'une dizaine d'arrêts et une dizaine de passagers) mais n'est pas pertinente au-delà. Il est donc naturel de vouloir calculer directement la matrice minimisant l'entropie.
+L'avantage de cette méthode est qu'elle renvoie une matrice correcte (\textit{ie} qui respecte totalement les contraintes de montées et de descentes) et qu'elle est composée d'entiers. Cependant, un important désavantage est qu'elle nécessite d'avoir au préalable calculé l'ensemble des matrices (entières) correspondantes, et comme nous l'avons vu précédemment, cela peut demander énormément de temps si la ligne est longue ou avec beaucoup de voyageurs. Cela peut donc fonctionner pour de petites lignes avec de petites valeurs (moins d'une dizaine d'arrêts et une dizaine de passagers) mais ne semble pas pertinente au-delà. Il est donc naturel de se tourner vers des méthodes permettant de calculer directement la matrice minimisant l'entropie.
 \subsection{Recherche par des méthodes d'optimisation}
 Pour cela, nous allons utiliser des méthodes dites d'optimisation et plus précisément de minimisation que nous allons appliquer à l'entropie.\\
 \\
-Pour une ligne de bus à $N$ arrêts, il y a $d = \frac{N(N-1)}{2}$ données à trouver (matrice triangulaire supérieure à diagonale vide). La fonction à minimiser est donc :
+Pour une ligne de bus à $N$ arrêts, il y a $d = \frac{N(N-1)}{2}$ données à trouver (matrice triangulaire strictement supérieure). La fonction à minimiser est donc :
 \[\begin{array}{rcl}
 S:\R^d&\to& \R\\
-x &\mapsto &\sum_{i=1}^d x_ilog(x_i)
+x &\mapsto &\sum_{i=1}^d x_ilog(x_i).
 \end{array}
 \]
 Le problème de minimisation est donc :
@@ -458,49 +473,51 @@ Le problème de minimisation est donc :
 \inf_{x\in \R^d} \: \: S(x) \quad (P_S)
 \]
 Nous allons tout d'abord poser un cadre théorique de la minimisation puis nous l'appliquerons à notre problématique.
-\subsubsection{Théorie}
+\subsubsection{Théorie de l'optimisation}
 \label{theorie optimisation}
-Cette section se base sur le cours d'optimisation de Quentin Marigot \cite{poly_quentin_marigot}.\\
+Cette section se base sur le cours d'optimisation de Quentin Merigot \cite{poly_quentin_merigot}.\\
 \\
-\defin$\:$\\
+\defin\\
 Soit $f \in C^1(\Rd)$,\\
 1. On appelle minimiseur global (ou minimiseur) tout élément $x^* \in \R^d$ vérifiant $f(x^*) = \inf_{R^d}f$. On note $arg \min_{\Rd} f$ l'ensemble des minimiseurs de $f$ (qui peut être vide) \textit{ie} : 
 \[
-arg \min_{R^d} f = \{ x \in \Rd | f(x) = \inf_{\Rd} f\}
+arg \min_{R^d} f = \{ x \in \Rd | f(x) = \inf_{\Rd} f.\}
 \]
 2. On appelle suite minimisante pour (P) toute suite $x^{(0)}, ..., x^{(k)}$, ... d'éléments de $\Rd$ telle que $\lim_{k\to+\infty} f(x^{(k)}) = \inf_{x \in \Rd} f(x)$.\\
 \\
-Il existe plusieurs méthodes qui permettent alors de résoudre des problèmes de minimisation pour des problèmes sans contraintes : gradient à pas fixe, à pas optimal, gradient préconditionné à rebroussement, méthode de Newton, etc. qui ne seront pas développées ici.\\
+Il existe plusieurs méthodes qui permettent de résoudre des problèmes de minimisation sans contraintes : gradient à pas fixe, à pas optimal, gradient préconditionné à rebroussement, méthode de Newton, etc. qui ne seront pas développées ici.\\
 \\
-Cependant, dans notre cas, les matrices Origine-Destination recevables sont contraintes par les données de montées et de descentes. Nous allons donc nous intéresser aux méthodes d'optimisation sous contraintes.\\
+Dans notre cas, les matrices Origine-Destination recevables sont contraintes par les données de montées et de descentes. Nous allons donc nous intéresser aux méthodes d'optimisation sous contraintes.\\
 \\
-Pour ce type de problème, on définit les contraintes par des inégalités : des fonctions convexes $c_1, \dots, c_l \in C^1(\Rd)$. On définit alors l'ensemble $K \subseteq \Rd$ convexe fermé : 
-\[K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}\] 
+Pour ce type de problème, les contraintes sont définies par des inégalités avec des fonctions convexes $c_1, \dots, c_l \in C^1(\Rd)$ qui forment alors un ensemble $K \subseteq \Rd$, convexe fermé : 
+\[K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}.\] 
 On appelle chacune des fonctions $c_1, \dots, c_l$ une contrainte du problème et on note alors le problème d'optimisation pour une fonction $f$ convexe comme :
 \[
-P := \min_{c_1(x), \dots, c_l(x)} f(x)
+P := \min_{c_1(x), \dots, c_l(x)} f(x).
 \]
-\prop $\:$ (Existence d'une solution)\\
-Un problème d'optimisation sous contraintes tel que définit précédemment admet une solution si l'une des conditions suivantes est vérifiée :\\
+\prop (Existence d'une solution)\\
+Un problème d'optimisation sous contraintes tel que défini précédemment admet une solution si l'une des conditions suivantes est vérifiée :\\
 1. $K$ est compact, non vide et $f$ est continue.\\
-2. $K$ est fermé, non vide, $f$ est continue et $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$\\
+2. $K$ est fermé, non vide, $f$ est continue et $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty.$\\
 \\
-\prop $\:$(Unicité) \\
+\prop (Unicité) \\
 Si la fonction $f$ est strictement convexe et si l'ensemble $K$ est convexe, alors le problème d'optimisation admet au plus une solution.\\
 \\
-\prop $\:$ En notant $(e_i)_{1\leq i,j\leq d}$ est la base canonique de $\Rd$, si $\forall x \in \Rd, \quad D^2f(x) = (\frac{\partial^2f}{\partial e_i \partial e_j}(x))_{1\leq i,j\leq d}$ (héssienne de f) est définie positive, alors $f$ est strictement convexe.\\
+\prop (Lien entre la héssienne et la stricte convexité)\\ 
+En notant $(e_i)_{1\leq i,j\leq d}$ est la base canonique de $\Rd$, si $\forall x \in \Rd, \quad D^2f(x) = (\frac{\partial^2f}{\partial e_i \partial e_j}(x))_{1\leq i,j\leq d}$ (héssienne de f) est définie positive, alors $f$ est strictement convexe.\\
 \\
-Pour faire la démonstration de cette proposition, on va utiliser les quatre lemmes suivants :\\
+Pour faire la démonstration de cette proposition, nous utilisons les quatre lemmes suivants :\\
 \\
-\lemme $\:$ (1) Soit $f \in C^1(\Rd).$ Etant donnés $x \in \Omega$ et $v\in\Rd$, on définit $x_t = x + tv$ et $g(t) = f(x_t)$. Alors,
+\lemme  (1) Soit $f \in C^1(\Rd).$ Étant donnés $x \in \Omega$ et $v\in\Rd$, on définit $x_t = x + tv$ et $g(t) = f(x_t)$. Alors,
 \[
-g'(t) = <\nabla f(x_t)|v>
+g'(t) = <\nabla f(x_t)|v>.
 \]
-\lemme $\:$ (2) Soit $\Omega \subset \Rd$ ouvert, $f \in C^2(\Omega),\: x \in \Omega, \: v \in \Rd$ et $g\:t\:\mapsto f(x_t)$ où $x_t = x + tv$. Alors,
+\\
+\lemme  (2) Soit $\Omega \subset \Rd$ ouvert, $f \in C^2(\Omega),\: x \in \Omega, \: v \in \Rd$ et $g\:t\:\mapsto f(x_t)$ où $x_t = x + tv$. Alors,
 \[
-g''(t) = <D^2f(x_t)v|v>
+g''(t) = <D^2f(x_t)v|v>.
 \]
-\demo $\:$ (2) On fait le calcul en coordonnées, en notant $(e_k)_k$ la base canonique :
+\demo (2) On fait le calcul en coordonnées, en notant $(e_k)_k$ la base canonique :
 \[
 g(t) = f(x + \sum_xtv_ke_k)
 \]
@@ -508,14 +525,15 @@ g(t) = f(x + \sum_xtv_ke_k)
 g'(t) = \sum_i v_i\frac{\partial f}{\partial e_i}(x + \sum_ktv_ke_k) = <\nabla f(x_t)|v>
 \]
 \[
-g''(t) = \sum_i\sum_jv_iv_i \frac{\partial^2f}{\partial e_j \partial e_i}(x + \sum_ktv_ke_k) = <D^2f(x_t)v|v> \\
+g''(t) = \sum_i\sum_jv_iv_i \frac{\partial^2f}{\partial e_j \partial e_i}(x + \sum_ktv_ke_k) = <D^2f(x_t)v|v>. \\
 \qed
 \]
-\lemme $\:$ (Taylor-Lagrange). Soir $f \in C^2(\Rd),\: x, v \in \Rd$ et $x_t = x + tv$. Alors, 
+\\
+\lemme (Taylor-Lagrange). Soir $f \in C^2(\Rd),\: x, v \in \Rd$ et $x_t = x + tv$. Alors, 
 \[
 \forall t \geq 0, \exists s \in [0,t],\quad f(x_t) = f(x) + t <\nabla f(x) | v> + \frac{t^2}{2}<D^2f(x_s)v|v>.
 \]
-\lemme $\:$ (3) Les propositions suivantes sont équivalentes :\\
+\lemme (3) Les propositions suivantes sont équivalentes :\\
 1. f est (strictement) convexe sur $\Rd$\\
 2.
 \[
@@ -529,24 +547,24 @@ g''(t) = \sum_i\sum_jv_iv_i \frac{\partial^2f}{\partial e_j \partial e_i}(x + \s
 \[
 \forall x,y \in \Rd, \: <\nabla f(x) - \nabla f(y)|x-y>\: \geq 0 \text{ (stricetement convexe si inégalité stricte).}
 \]
-\demo $\:$ (3)\\
+\demo (3)\\
 1. $\Longleftrightarrow$ 2. par application directe de la définition.\\
 2. $\Longrightarrow$ 3. Soit $x,y \in \Rd$ et $g : t \mapsto f(x_t)$ où $x_t = (1-t)x + tv = x + t(y-x)$ qui est convexe par hypothèse. Par convexité, on a $g(t) \leq g(0) + tg'(0)$ soit par le lemme 1 :\\
-$f(x) + <\nabla f(x) | y-x> \leq f(y)$\\
+$f(x) + <\nabla f(x) | y-x> \leq f(y)$.\\
 3. $\Longrightarrow$ 4. Il suffit de sommer l'inégalité (3) et la même inégalité où l'on inverse les rôles de $x$ et de $y$.\\
 4. $\Longrightarrow$ 2. Soit encore $g : t \mapsto f(x_t)$. Comme $g'(t) = <\nabla f(x_t)|y-x>$ par le lemme (1), l'inégalité 4. appliquée en $x_s$ et $x_t$ (où t>s) nous donne 
 \[
-g'(t) -g'(s) = <\nabla f(x_t) - \nabla f(x_s) | y-x> = \frac{1}{t-s}<\nabla f(x_t) - \nabla f(x_s)|x_t - x_s> \geq 0.
+g'(t) -g'(s) = <\nabla f(x_t) - \nabla f(x_s) | y-x> = \frac{1}{t-s}<\nabla f(x_t) - \nabla f(x_s)|x_t - x_s> \:\geq 0
 \]
 et $g'$ est donc croissante sur [0,1]. Ainsi, g est convexe. $\qed$\\
 \\
-\demo $\:$ (proposition) On considère $x,y \in \Omega$ et $g(t) = f(x_t)$ où $x_t = (1-t)x + ty$. Alors, par le lemme (2) avec $v = y-x$, on a $g''(t) = <D^2f(x_t)(y_x)|(y-x)>$ est strictement positif par hypothèse, donc par le lemme (Taylor-Lagrange) on a :
+\demo  (proposition) On considère $x,y \in \Omega$ et $g(t) = f(x_t)$ où $x_t = (1-t)x + ty$. Alors, par le lemme (2) avec $v = y-x$, on a $g''(t) = <D^2f(x_t)(y_x)|(y-x)>$ est strictement positif par hypothèse, donc par le lemme (Taylor-Lagrange) on a :
 \[ g(1) = g(0) + g'(0= + \frac{s^2}{2}g''(s) > g(0) + g'(0).\]
 Or, $f(y) = g(1)$ et $f(x) = g(0)$. Donc, on a, $f(y) > f(x) + <\nabla f(x)|y-x>$ et donc d'après le lemme (3) donc $f$ est strictement convexe. $\qed$\\
 \\
-\lemme $\:$ Si les fonctions $c_1, \dots, c_l \: \Rd \to \R$ sont continues et convexes, alors l'ensemble $K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}$ est fermé et convexe.\\
+\lemme Si les fonctions $c_1, \dots, c_l \: \Rd \to \R$ sont continues et convexes, alors l'ensemble $K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}$ est fermé et convexe.\\
 \\
-\demo  $\:$\\
+\demo \\
 K est fermé :\\
 Soit $(x_n)$ une suite d'élément de $K$ convergent vers une limite $x$, montrons que $x \in K$. Par hypothèse, comme $x_n \in K, \: c_i(x_n) \leq 0, \: \forall i \in \{1, \dots, l \}$. En passant à la limite $ n \to +\infty$ en utilisant la continuité de $c_i$, on en déduit que $c_i(x) \leq 0, \forall i \in \{1, \dots, l \}$. Donc $x$ appartient à $K$ et donc $K$ est fermé.\\
 \\
@@ -576,34 +594,34 @@ Dans cette formulation du problème, les points $x \in \Rd$ tels que $c_i(x) > 0
 \]
 \prop $\:$ Soit $f \in C^0(\Rd)$ strictement convexe et vérifiant $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$, alors :\\
 1. Les problèmes $P_\epsilon$ et $P$ admettent chacun un unique minimiseur, noté $x^*$ et $x^*_\epsilon$.\\
-2. $\lim_{\epsilon\to 0} x^*_\epsilon = x^*$\\
+2. $\lim_{\epsilon\to 0} x^*_\epsilon = x^*.$\\
 \\
 \demo $\:$\\
 1. L'existence d'une solution au problème d'optimisation sans contraintes $P_\epsilon$ se déduit du fait que $f_\epsilon$ est continue et que $\lim_{\lVert x\lVert \to +\infty} f_{\epsilon}(x) \geq \lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$. Tandis que l'existence de solution au problème avec contraintes $P$ se déduit du fait que $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$ et que $K$ est fermé (lemme précédent). Pour l'unicité de la solution au problème P, il suffit de remarquer que $f$ est strictement convexe (par hypothèse) et que $K$ est convexe (lemme précédent à nouveau). Enfin, pour l'unicité de la solution du problème $P_\epsilon$ il faut montrer que $f_\epsilon$ est strictement convexe. Soient $x,y \in \Rd, t \in [0,1]$ et $x_t = (1-t)x + ty$. Alors,
 \[
-c_i(x_t) \leq (1-t)c_i(x) + tc_i(y)
+c_i(x_t) \leq (1-t)c_i(x) + tc_i(y).
 \]
-de sorte que :
+De sorte que :
 \[
-max(c_i(x_t),0) \leq max((1-t)c_i(x) + tc_i(y),0) \leq (1-t)max(c_i(x),0) + tmax(c_i(y),0)
+max(c_i(x_t),0) \leq max((1-t)c_i(x) + tc_i(y),0) \leq (1-t)max(c_i(x),0) + tmax(c_i(y),0).
 \]
-puis en utilisant la convexité de $r \in \R \mapsto r^2$, on a : \[
+Puis en utilisant la convexité de $r \in \R \mapsto r^2$, on a : \[
 max(c_i(x_t),0)^2 \leq [(1-t)max(c_i(x),0) + tmax(c_i(y),0)]^2\\
-\leq (1-t)max(c_i(x),0)^2 + tmax(c_i(y),0)^2
+\leq (1-t)max(c_i(x),0)^2 + tmax(c_i(y),0)^2.
 \]
 On en déduit que les fonctions $x \mapsto max(c_i(x),0)^2$ sont convexes et $f_\epsilon$ est donc strictement convexe comme combinaison linéaire à coefficients positifs de fonctions convexes et d'une fonction strictement convexe.\\
 \\
 2. Soit $x^* \in K$ le minimiseur de $P$. Alors comme $c_i(x^*) \leq 0$, on a :
 \[
-P_\epsilon \leq f_\epsilon(x^*) = f(x^*) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x^*),0)^2 = f(x^*) = P
+P_\epsilon \leq f_\epsilon(x^*) = f(x^*) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x^*),0)^2 = f(x^*) = P.
 \]
 Ainsi, 
 \[
 P_\epsilon = f(x_\epsilon^*) + \frac{1}{\epsilon} \sum^{l}_{i = 1}max(c_i(x_\epsilon^*),0)^2
-\leq P\]
+\leq P.\]
 Comme $\lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$, la fonction f est minorée par $m \in \R$. On en déduit donc que :
 \[
-\forall i \{1,...,l\}, \frac{1}{\epsilon}max(c_i(x^*_\epsilon),0) \leq \frac{1}{\epsilon} \sum^{l}_{j = 1}max(c_j(x_\epsilon^*),0)^2 \leq P - f(x^*_\epsilon) \leq P - m 
+\forall i \{1,...,l\}, \quad \frac{1}{\epsilon}max(c_i(x^*_\epsilon),0) \leq \frac{1}{\epsilon} \sum^{l}_{j = 1}max(c_j(x_\epsilon^*),0)^2 \leq P - f(x^*_\epsilon) \leq P - m 
 \]
 ou encore 
 \[
@@ -614,7 +632,6 @@ Soit $\Bar{x}$ une valeur d'adhérence de la suite $x^*_\epsilon$ lorsque $\epsi
 max(c_i(\Bar{x}),0)^2 \leq 0
 \]
 ce qui montre que $\Bar{x} \in K$. De plus, pour tout $\epsilon > 0$, $f(x_\epsilon) \leq P_\epsilon \leq P$ de sorte que $f(\Bar{x}) \leq P$. On en déduit que $\Bar{x}$ minimise $f$ sur $K$, soit $\Bar{x} = x^*$. Pour conclure, on remarque que la suite $(x^*_\epsilon)$ est bornée et admet une valeur d'adhérence de sorte que $\lim_{\epsilon \to 0} x^*_\epsilon = x^*$. $\qed$
-
 \subsubsection{Application à l'entropie}
 Vérifions maintenant que le problème de minimisation de l'entropie avec les contraintes de montées et de descentes se trouvent dans le cadre théorique décrit précédemment.\\
 \\
@@ -622,18 +639,20 @@ Tout d'abord, vérifions que $S : x \in \Rd \mapsto \sum_{i=1}^dx_ilog(x_i)$, es
 \\
 1. Continuité :\\
 La fonction $log$ est $C^{\infty}$ sur $\R^+_*$.\\
+\\
 2. Stricte convexité :\\
 Pour cela, nous allons utiliser la première proposition de la section \ref{theorie optimisation} en étudiant la hessienne de $S, \quad \forall i, j \in \{ 1, ...,d\} :$
 \[
 i \neq j : \: \frac{\partial^2S}{\partial_i\partial_j}(x) = 0
 \]
 \[
-i = j : \: \frac{\partial^2S}{\partial_i^2}(x) = \frac{1}{x_i}
+i = j : \: \frac{\partial^2S}{\partial_i^2}(x) = \frac{1}{x_i}.
 \]
-Donc la hessienne de $D^2S(x)$ pour $x \in \Rd$ est une matrice diagonale, donc le spectre est $\{\frac{1}{x_1},..., \frac{1}{x_d}\}$ tous non-nuls donc $D^2S(x)$ est définie positive et donc $S$ est strictement convexe. \\
+Donc la hessienne de $D^2S(x)$ pour $x \in \Rd$ est une matrice diagonale, donc le spectre est $\{\frac{1}{x_1},..., \frac{1}{x_d}\}$ tous non-nuls donc $D^2S(x)$ est définie positive et donc $S$ est strictement convexe.\\
+\\
 3. Limite :\\
 \[ \forall x_i \in \R, \lim_{x_i \to +\infty} x_ilog(x_i) = +\infty \]
-donc  on a $\forall x \in \Rd \lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$\\
+donc  on a $\forall x \in \Rd \lim_{\lVert x\lVert \to +\infty} f(x) = +\infty$.\\
 \\
 Transformons les contraintes de montées et de descente en fonctions convexes et continues $c_i : x \in \Rd \mapsto \R$.\\
 \begin{itemize}
@@ -647,10 +666,12 @@ Transformons les contraintes de montées et de descente en fonctions convexes et
 \end{itemize}
 Toutes les fonctions de contraintes sont des fonctions polynomiales du premier degré donc sont convexes et continues alors $K = \{x \in \Rd \:|\: c_1(x) \leq 0, \dots, c_l(x) \leq 0 \}$ est un convexe fermé.\\
 \\
-Notre problème vérifie donc bien toutes les conditions d'un problème de minimisation sous contraintes : il existe bien une unique solution que l'on va pouvoir approcher à l'aide de la méthode de pénalisation.
+Notre problème vérifie donc bien toutes les conditions d'un problème de minimisation sous contraintes : il existe bien une unique solution que l'on va pouvoir approcher à l'aide de méthodes d'optimisation, notamment la méthode de pénalisation.
 \[P_{S\epsilon} = \min_{\R^d} \sum^d_{i=1} x_ilog(x_i) + \frac{1}{\epsilon} \sum^{l}_{j = 1}max(c_i(x),0)^2 \]
-\subsubsection{Application en python}
-La suite naturelle est d'implémenter ces méthodes en Python et de les tester sur différentes données. Pour cela, on doit passer en vue vectorielle ($\R^d$) plutôt que matricielle. Voici un exemple pour une matrice Origine-Destination de taille 5 ($d=10$):
+\subsubsection{Méthodes d'optimisation en python}
+La suite naturelle est d'implémenter ces méthodes en Python et de les tester sur différentes données.\\
+\\
+Une des difficultés du code a été les passages de la vue vectorielle ($\R^d$), qui correspond au vecteur des fonctions d'optimisation, à la vue matricielle ($\R^{N\times N}$) qui correspond à nos données et notamment aux contraintes. Voici un exemple de passage de l'un à l'autre pour une matrice Origine-Destination de taille $N=5$ et $d=10$:
 \begin{adjustwidth}{-2cm}{-2cm}
 
 \[
@@ -684,7 +705,9 @@ x_{10}\\
 \end{pmatrix}
 \]
 \end{adjustwidth}
-Dans un premier temps, nous nous sommes intéressés à la bibliothèque \href{https://docs.scipy.org/doc/scipy/tutorial/optimize.html#id21}{Scipy} et plus précisément la fonction \textsc{minimize} avec la méthode \textsc{trust-constr} (Trust-Region Constrained Algorithm). Pour cette méthode, il est nécessaire de définir des bornes pour les valeurs [0, $+\infty$[ ainsi qu'une matrice de contraintes. C'est une matrice A telle que :
+\vspace{0.1cm}
+\underline{Première méthode :}
+La première méthode d'optimisation explorée est une de celles proposées par la bibliothèque \href{https://docs.scipy.org/doc/scipy/tutorial/optimize.html#id21}{Scipy}, il s'agit de la fonction \textsc{minimize} avec la méthode \textsc{trust-constr} (Trust-Region Constrained Algorithm). Pour cette méthode, il est nécessaire de définir des bornes pour les valeurs [0, $+\infty$[ ainsi qu'une matrice de contraintes. C'est une matrice A telle que :
 \[
 Ax =
 \begin{pmatrix}
@@ -695,106 +718,1681 @@ Ax =
 \vdots\\
 \nu_N
 \end{pmatrix}
-\]
-Puis dans un second temps, on s'est intéressé à l'implémentation de la méthode de pénalisation décrite dans la section précédente. Pour cela, on se base également sur la bibliothèque Scipy et la fonction \textsc{minimize} mais cette fois on utilise la méthode \textsc{Nelder-Mead} qui n'utilise pas de borne et de contraintes linéaires. En effet, comme nous l'avions vu, dans la méthode de pénalisation les contraintes sont prises en compte par le biais de la fonction qui est passée en argument. Il ne s'agit pas seulement de la fonction à minimiser (ici l'entropie) mais également de termes qui explosent lorsque les contraintes ne sont pas vérifiées. Cependant, du fait que l'on s'intéresse (en partie) à des contraintes d'égalités on peut transformer les aaah en aaaaah. explication réécriture des contraintes d'égalité (voir tp4) et explication de la recherche du meilleur epsilon avec l'utilisation de la fonction de test de qualité.\\
-\\
-Pour les deux méthodes, on a fait le choix de normaliser les vecteurs de montées et de descentes (Bertrand / parce que l'entropie est def comme un truc de probas et donc c'est mieux d'avoir une densité). Pour les deux méthodes il est nécessaire de choisir un vecteur initial $x_0 \in \Rd$. Pour cela, on prend le vecteur correspondant aux produit des marginales. (Faire joli dessin). \\
-\\
-test sur des petits vecteurs et de petites valeurs (5 et 6). Comparaison aux résultats précédents ? Quelques images de graphes pour illustrer les résultats trouvés ?\\
-\\
-En prenant contact avec Rennes Métropole, nous avons également eu accès à de véritables données de déplacements issues de  \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{l'enquête réalisée au printemps 2023} avec notamment des matrices Origine-Destination. Nous allons alors voulu comparer ces données avec les deux algorithmes de minimisation. Nous nous sommes intéressés aux données d'un jour de semaine sur la ligne A (sens Poterie $\to$ Kennedy) sur la plage de 8h30-9h14. Comparer aux données lagrangiennes réelles.\\
-\\
-Tableau comparatif des temps et des précisions et donc du choix de la méthode de pénalisation plutôt que des méthodes de Scipy. (également comparer avec le temps pris par les méthodes de calculs sur l'ensemble des matrices correctes).\\
-\\
-Au final, il ressort que la méthode de pénalisation est la plus rapide des deux notamment pour les grandes valeurs, mais qu'au global les deux sont toujours beaucoup plus efficaces que le calcul de l'ensemble des matrices correspondantes. Le défaut est que l'on perd le côté valeurs entières, on travaillera plutôt sur des densités plutôt que sur le comptage de véritables humains.
-\subsection{Mesure de Gibbs}
+\text{ Pour le cas } N=4, A =
+\begin{pmatrix}
+1 & 1 & 1 & 0 & 0 & 0\\
+0 & 0 & 0 & 1 & 1 & 0\\
+0 & 0 & 0 & 0 & 0 & 1\\
+0 & 0 & 0 & 0 & 0 & 0\\
+0 & 0 & 0 & 0 & 0 & 0\\
+1 & 0 & 0 & 0 & 0 & 0\\
+0 & 1 & 0 & 1 & 0 & 0\\
+0 & 0 & 1 & 0 & 1 & 1\\
+\end{pmatrix}\]
+Il est tout à fait possible de généraliser la matrice A, mais son écriture, notamment pour les descentes, n'est pas très pratique. Il est plus simple de la coder en repassant par la vue matricielle. On passe en argument la fonction ainsi que son gradient et sa hessienne pour éviter que leur calcul par Scipy amènent à de trop grandes approximations. 
+\[ S(x) = \sum^{n}_{i=1} x_i\times\log(x_i)\]
+\[ \nabla S(x)_i = \log(x_i) + 1\]
+\[D^2(x)_{i,j}  = \left\{
+    \begin{array}{ll}
+        0 & \mbox{si } i \neq j \\
+        \frac{1}{x_i} & \mbox{sinon.}
+    \end{array}
+\right.\]
+Cependant, la fonction log et la fonction inverse n'étant pas définies pour des valeurs nulles ou négatives, les fonctions ont été légèrement modifiées pour éviter les erreurs lors de l'exécution du code :
+\begin{lstlisting}
+    def entropie(x):
+        res = 0
+        # Entropie
+        for x_i in x:
+            if x_i > 0:
+                res += x_i * np.log(x_i)
+        return res
 
-\section{Temps de transport}
-\subsection{Cadre théorique}
-On se place maintenant dans un cadre plus large que celui de la ligne de bus : un réseau de transport d'une agglomération avec des routes, des lignes de métro, des lignes de bus, etc. On reprend la modélisation par un graphe, on pose $\mathcal{N} = (V,\:E)$ où :
-\begin{itemize}
-    \item $V$ est un ensemble de points qui correspondent à des zones géographiques de taille réduite : une zone de travail, d'habitation, d'étude ou un point de bifurcation (échangeur routier, gare de correspondance, etc).\\
-    \item $E$ est un ensemble d'arêtes qui correspondent à des tronçons routiers ou de voies ferrées qui relient deux points de $V$. On attribue un type à chaque arête : C si c'est un transport en commun et R si c'est un transport routier.\\
-\end{itemize}
-On note :
-\begin{itemize}
-    \item $X \subset V$ les zones de départ (zone d'habitation).\\
-    \item  $Y \subset V$ les zones d'arrivée (zones d'étude ou de travail).\\
-\end{itemize}
-\rmq $\:$On n'a pas nécessairement $X \cap Y = \emptyset$.\\
-\\
-On se donne une mesure $\mu = (\mu_x) = \R^X_+$ sur $X$ quantifiant le nombre de personnes rattachées aux différentes zones de $X$. Et pareillement une mesure $\nu = (\nu_y) = \R^Y_+$ quantifiant le nombre de personnes rattachées aux différentes zones de $Y$.\\
-\\
-On peut à nouveau introduire la notion de plan Origine-Destination $\gamma = (\gamma_{xy}) \in \R^{X\times Y}_+$ où $\gamma_{xy}$ est le nombre de personnes voulant se rendre de $x$ à $y$. On notera $\Lambda_{\mu \nu}$ les plans qui satisfont les conditions :
-\[
-\sum_{y \in Y} \gamma_{xy}= \mu_x \text{ et } \sum_{x \in X} \gamma_{xy}= \nu_y
-\]
-On introduit également le support de $(\gamma_{xy}) : \Lambda = \{(x,y) \in X\times Y, \: \gamma_{xy} > 0\}$, l'ensemble des couples départ-arrivée qui sont concernés par une quantité non-nulle de voyageurs.\\
-\\
-On introduit ensuite la notion de chemin. Pour $x \in X \text{ et } y \in Y$, on définit un chemin entre $x$ et $y$ comme une suite consécutive d'arêtes dont la première est issue de $x$ et la dernière termine en $y$. On dira qu'un chemin $c$ est admissible s'il ne contient des arêtes que de type R ou que de type C ou d'un premier tronçon d'arêtes de type R puis un deuxième tronçon d'arêtes de type C. On note $C_{xy}$ l'ensemble des chemins admissibles de $x$ à $y$.\\
-\\
-On suppose que $Y$ est fortement connecté à $X$ :
-\[
-\forall (x,y) \in \Lambda,\quad C_{xy} \neq \emptyset
-\]
-On introduit ensuite la notion de scénario qui correspond à un choix de répartition (ou de distribution) des voyageurs entre les différents chemins admissibles que l'on note, pour tout $x,y \in \Lambda$, $(\gamma_{xy}^c)_{c \in C_{xy}} \in \R^{C_{xy}}_+$ où $\gamma_{xy}^c$ est le nombre de personnes allant de $x$ à $y$ en passant par le chemin c. On a : \[
-\sum_{c \in C_{xy}} \gamma_{xy}^c = \gamma_{xy}
-\]\\
-\\
+    # Definition de la jacobienne associee
+    def jacobian_entropie(x):
+        res = []
+        for x_i in x:
+            if x_i > 0:
+                res += [np.log(x_i) + 1]
+            else:
+                res += [0]
+        return res
 
-\subsection{Problématique}
-À nouveau, on pourrait se poser la question du passage des données eulériennes à lagrangiennes, le problème est relativement similaire mais la présence de plusieurs chemins pour le même trajet de $x$ à $y$ fait augmenter le nombre de scénarios lagrangiens amenant aux mêmes données eulériennes. À nouveau, on pourrait utiliser la maximisation ou la minimisation de l'entropie pour sélectionner un scénario.\\
-\\
-Dans cette section, nous allons plutôt nous intéresser aux temps de trajet et aux stratégies qui leur sont associées.
-La difficulté d'analyse des stratégies tient au fait que le temps de transport associé à un voyageur et son itinéraire peut dépendre du choix des autres voyageurs par des phénomènes de congestions (ex : bouchons sur la rocade rennaise aux heures de pointe ou à la station de métro Gares des lignes a et b).\\
-\\
-On note $T^c_{xy}$ le temps de parcours associé au chemin c entre $x$ et $y$. Ce temps dépend tout d'abord du chemin choisi, mais aussi \textit{a priori} aussi du choix des autres voyageurs. En toute généralité, $T^c_{xy} = T^c_{xy}(\gamma)$ où $\gamma = (\gamma^c_{xy})$ Il s'agit donc d'un temps de parcours \textit{a posteriori} puisqu'il dépend, pour un jour donné, de l'ensemble des choix effectués par les voyageurs qui n'est pas connu \textit{a priori}.\\
-\\
-On fait l'hypothèse qu'un voyageur seul ne pèse rien : son temps de parcours dépend du choix des autres voyageurs, mais sa propre décision personnelle n'affecte pas à elle seule le temps de parcours d'un chemin qui le choisisse ou pas.\\
-\\
-\rmq $\:$ Le temps $T^c_{xy}(\gamma)$ a un sens aussi pour un chemin qui n'est emprunté par personne, i.e. tel que $\gamma^c_{xy} = 0$. Le chemin $c \in C_{xy}$, même s'il est mis de côté par les gens qui vont de $x$ à $y$ reste une option possible et qui dans certains cas sera même plus avantageuse que d'autres chemins empruntés.\\
-\\
-Il existe plusieurs quantités observables associées à un plan $(\gamma^c_{xy})$ :\\
-\\
-Si l'on suppose connue la fonction $T^c()$ d'estimation des temps de parcours, on peut associer à un plan $\gamma = (\gamma^c_{xy})$ le temps moyen de parcours défini par :
+    # Definition de la hessienne associee
+    def hessian_entropie(x):
+        res = []
+        for i in range(len(x)):
+            ligne_res = []
+            for j in range(len(x)):
+                if i != j:
+                    ligne_res.append(0)
+                else:
+                    ligne_res.append(1 / x[i])
+            res.append(ligne_res)
+        return res
+
+\end{lstlisting}
+\vspace{0.2cm}
+\underline{Seconde méthode :}
+La seconde méthode explorée a été une méthode  de pénalisation comme décrite dans la section précédente. Pour cela, on se base également sur la bibliothèque Scipy et la fonction \textsc{minimize} mais cette fois, on utilise la méthode \textsc{Nelder-Mead} qui n'utilise pas de borne et de contraintes linéaires. La fonction passée en argument est donc :
 \[
-\Bar{T} = \Bar{T}(\gamma) = \frac{1}{\mu_X} \sum_{(x,y) \in X \times Y} \sum_{c \in C_{xy}} \gamma^c_{xy}T^c_{xy}(\gamma) \quad \text{où } \mu_X = \sum_{x \in X} \mu_x
+\begin{split}
+S_{\epsilon}(x) = & \sum^{N}_{i=1}(x_ilog(x_i) + \frac{1}{\epsilon}\max(-i,0)^2)\\
+& + \sum_{i=1}^N \frac{1}{\epsilon}(\sum_{j \text{ sur la ligne i}}x_j - \mu_i)^2 \\
+ & + \sum_{j=1}^N \frac{1}{\epsilon}(\sum_{i \text{ sur la colonne j}}x_i - \nu_j)^2
+\end{split}
 \]
-\rmq $\:$ On prendra garde au fait que ce temps moyen n’est pas une fonction linéaire de $\gamma$, du fait de la dépendance des temps de parcours vis-à-vis de $\gamma$. On notera aussi le caractère non local des termes intervenant dans la sommation : le temps de parcours associé à un chemin c de $x$ vers $y$ est susceptible d’être
-influencé par le nombre de voyageurs se rendant de $x' \neq x$ à $y' \neq y$, si le chemin $c'$ en question partage un
-tronçon avec c.\\
-\\
-On peut également observer le temps de parcours "à vide" $T^0_{xy}$, le temps minimal que l'on peut mettre pour aller de $x$ à $y$ (sans congestion). On pourra alors s'intéresser à la différence $T^c_{xy} - T^0_{xy}$ pour un chemin $c$ qui mesurera la "frustration" des voyageurs allant de $x$ à $y$ par le chemin c en un temps $T^c_{xy}$ qui sont conscients qu'ils auraient pu aller plus vite s'ils étaient seuls (absence de congestion).\\
-\\
-On peut associer à un plan $\gamma$ d'autres quantités observables comme la quantité de gaz à effet de serre émise par l'ensemble des voyageurs que l'on pourrait chercher à minimiser.\\
-\\
-Une question qui peut se poser en tant que voyageurs est alors "aurais-je pu aller plus vite si j'avais choisi un autre chemin ?". Pour cela, on introduit la notion d'équilibre de Nash :\\
-\\
-\defin $\:$ Équilibre de Nash pour le temps de parcours d'un plan de mobilité.\\
-Avec les notations précédentes, on dit qu'un plan $\gamma = (\gamma^c_{xy})$ réalise un équilibre de Nash si :\[
-T^c_{xy} \geq T^{max}_{xy} = \max_{c \in C^{xy}, \gamma^c_{xy} > 0} \quad \forall c \in C_{xy}, \: \text{avec égalité si } \gamma^c_{xy} > 0
-\]
-Cela signifie que le temps de parcours associé aux chemins $c \in C^{xy}$ est le même pour tous les chemins empruntés ($\gamma^c_{xy} > 0$) et est plus élevé pour les chemins non empruntés. Un voyageur allant de $x$ à $y$ ayant opté pour un certain chemin n'a pas d'intérêt à changer de chemin pour diminuer son temps de parcours par rapport à ce que font les autres voyageurs.\\
-\\
-Le temps de parcours effectif d'un voyageur dépend de nombreux facteurs et se trouve en particulier conditionné par des phénomènes ponctuels et locaux qu'il est difficile de prévoir. Pour les parcours sur des arêtes de type R (routes), le temps de parcours d'un conducteur dépend en particulier de l'apparition de bouchons qui peuvent apparaitre puis se résorber, de sorte que pour un même parcours, un décalage du départ peut affecter de manière significative le temps de parcours. On peut néanmoins considérer que le temps effectif moyen est une fonction décroissante de la quantité de personnes présentes. Dans cette optique, on pourra considérer par exemple que le temps mis pour parcourir une arête e s'écrit comme un temps de référence $T^e_0$ (longueur de e divisé par la vitesse limite sur ce tronçon) multiplié par un facteur correctif supérieur ou égale à 1 qui dépend du nombre de personnes qui empruntent cette arête durant leur parcours.
+Comme pour la première méthode, on a également calculé le gradient pour éviter les erreurs d'approximation. Pour cela, on va également devoir utiliser la vue matricielle. On suppose que $x_i$ est sur la ligne $k$ et la colonne $l$ :
 \[
-T^e = T^e_0 \psi(\sum_{x,y} \sum_{c\in C_{xy} | e \in c} \gamma^c_{xy})
+\begin{split}
+\nabla S_{\epsilon}(x)_i = &  \: \log(x_i) + 1 \\
+&+ \frac{2}{\epsilon}(\text{ somme des termes sur la même ligne que } x_i \text{ en vue matricielle} - \mu_k)\\
+&+  \frac{2}{\epsilon}(\text{ somme des termes sur la même colonne que } x_i \text{ en vue matricielle} - \mu_l)
+\end{split}
 \]
-Pour définir $\psi$, on peut s'inspirer des modèles classiques de trafic routier :
-\[
-\psi(m) = \frac{1}{(1 - \frac{m}{m^e_{max}})} \in [1;+\infty[
-\] où $m^e_{max}$ est la quantité de véhicules qui conduit, sur la période de temps considérée, à une saturation complète du trafic.\\
+Il a fallu ensuite définir une valeur pour le terme de pénalisation $\frac{1}{\epsilon}$. En effet, si on le choisit trop petit, les contraintes ne seront pas forcément respectées, mais si on le choisit trop grand, il est trop restrictif et on ne peut pas aboutir à un résultat convenable. Pour cela, on a effectué des tests sur des vecteurs de différentes longueurs, il est ressorti que prendre $\epsilon = 0.01$ ou $\frac{1}{\epsilon} = 100 $ était le choix qui amenait à la meilleure qualité, notion définie (\ref{qualite}) un peu plus tard dans la partie test des méthodes.\\
 \\
-Plusieurs questions se posent alors :
+Enfin, pour les deux méthodes, il est nécessaire de choisir un vecteur initial $x_0 \in \Rd$. Pour cela, on a fait le choix du vecteur correspondant au produit des marginales (en vue matricielle) : $\gamma_{ij} = \mu_i * \nu_j$. Ce choix permet de se placer dès le début dans l'espace des vecteurs respectant les contraintes.
+\subsubsection{Tests des méthodes d'optimisation Python}
+Le code python pour chacun de ces tests se trouve en annexe.\\
+\\
+\underline{Test sur des vecteurs aléatoires :}\\
+On effectue un premier test sur des vecteurs générés aléatoirement à partir d'un nombre de voyageurs et d'un nombre d'arrêt donné. On fait le choix de tester les performances des deux méthodes sur deux aspects : le temps et la qualité du résultat. Pour définir la qualité du résultat, on ne peut pas se baser sur la distance à la matrice OD puisque que nous n'avons que les vecteurs de montées et de descentes, à la place, on s'intéresse donc au respect des contraintes. Pour une matrice $M$ de taille $n$, on définit sa qualité comme \label{qualite} :
+\[
+\text{Qualité}(M) = (\sum^n_{i=1} (\sum^n_{j=1} M_{ij}) - \mu_i)^2 + (\sum^n_{j=1} (\sum^n_{i=1} M_{ij}) - \nu_j)^2 + \sum^n_{i=1}\sum^n_{j=1}\max(0;-M_{ij})^2 .
+\]
+Plus la qualité est proche de 0, meilleur est le résultat.\\
+\\
+Voici les résultats pour 5 essais pour des lignes de 5 à 10 arrêts avec à chaque fois ($8\times$nombre d'arrêts) voyageurs. Attention, l'échelle des ordonnées n'est pas la même pour les deux graphes.\\
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=14cm]{Images/boxplot_vect_aleatoires/57_temps.png}
+    \caption{Temps de traitement pour des lignes de taille 5 à 7 arrêts}
+    \label{vecteurs aleatoires temps}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=14cm]{Images/boxplot_vect_aleatoires/810_temps.png}
+    \caption{Temps de traitement pour des lignes de taille 8 à 10 arrêts}
+    \label{vecteurs aleatoires qualite}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=14cm]{Images/boxplot_vect_aleatoires/57_qualite.png}
+    \caption{Qualité pour des lignes de taille 5 à 7 arrêts}
+    \label{vecteurs aleatoires temps}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=14cm]{Images/boxplot_vect_aleatoires/810_qualite.png}
+    \caption{Qualité pour des lignes de taille 8 à 10 arrêts}
+    \label{vecteurs aleatoires qualite}
+\end{figure}
+
+On voit que le temps de traitement est très faible pour les deux méthodes lorsque la ligne compte peu d'arrêts, mais devient beaucoup plus important pour la méthode scipy à partir de huit arrêts. Quant à la qualité du résultat, le respect des contraintes est très bon pour la méthode Scipy mais est un peu moins bonne pour la méthode de pénalisation ($10^{-3}$). \\
+\\
+Il est intéressant de savoir si le résultat trouvé respecte bien les contraintes, mais cela ne nous donne aucune information quant à la qualité du résultat vis-à-vis de la réalité : le résultat est-il proche de la vraie répartition des voyageurs sur la ligne de transport ? On pourrait regarder la norme subordonnée des matrices trouvées et faire la différence avec celle de la vraie matrice Origine Destination, mais cette vision est plutôt adaptée à des applications linéaires et l'est moins pour le cadre dans lequel on se place. On introduit donc deux autres moyens de comparer les matrices trouvées et  les vraies matrices : l'entropie relative et la distance au sens des moindres carrés.\\
+\\
+\defin\\
+On note
+\[
+P_N = \{ \mu = (\mu_1, \dots, \mu_N) \in \R^N_+, \quad \sum_i \mu_i =1 \}
+\]
+l'espace des lois de probabilités sur l'ensemble à $N$ élément et $\overset{o}{P_N}$ le sous-ensemble des $\mu$ tels que pour tout $i,\: \mu_i > 0$. On définit l'entropie relative de $\mu$ par rapport à $\eta$ par 
+\[
+\mu \in P_N \mapsto S_\eta(\mu) = \sum_i \mu_ilog(\frac{\mu_i}{\eta_i}) = \sum_i \frac{\mu_i}{\eta_i}log(\frac{\mu_i}{\eta_i})\eta_i
+\]
+\rmq $\:$ L'entropie relative est également appelée divergence de Kullback-Leibler et notée $D_{KL}(\mu | \nu)$.\\
+\\
+\prop
+\[
+\forall \eta \in \overset{o}{P_N}, \mu \in P_N, \quad S_\eta(\mu) \geq 0
+\]
+\demo
+\[
+S_\eta(\mu) = \sum_i \mu_ilog(\frac{\mu_i}{\eta_i}) = -\sum \mu_ilog(\frac{\eta_i}{\mu_i})
+\]
+Or le logarithme est une fonction concave donc par l'inégalité de Jensen on a :
+\[
+\sum \mu_ilog(\frac{\eta_i}{\mu_i}) \leq log(\sum\mu_i \frac{\eta_i}{\mu_i}) \leq log(\sum \eta_i) \leq log(1) \leq 0.
+\]
+Donc on a bien $S_\eta(\mu) \geq 0.$\\
+\\
+\prop
+\[
+\mu = \eta \Rightarrow S_\eta(\mu) = 0.
+\]
+\demo
+\[\forall i \in \{1,\dots,N\}, \quad \mu_i = \eta_i \text{ donc } log(\frac{\mu_i}{\eta_i}) = 0 \text{ donc } S_\eta(\mu) = 0.
+\]
+ Plus l'entropie relative est faible plus les deux matrices sont semblables. Les méthodes de minimisation ayant tendance à donner des résultats avec peu de coefficients valant 0, on va plutôt regarde $S_{\text{trouvé}}(vrai)$ que $S_{vrai}(\text{trouvé})$ pour éviter quelques divisions par 0 mais dans les faits on peut avoir des valeurs négatives ou nulles. On choisit donc de coder ainsi l'entropie relative :\\
+\begin{lstlisting}
+def distance_entropie_relative(matriceOD, matrice2, n):
+    """
+    :param matriceOD: matrice origine destination (avec des 0 potentiellement)
+    :param matrice2: matrice trouvee par optimisation
+    :param n: taille des matrices
+    :return: l'entropie relative S_matrice2(matrice_OD)
+    """
+    res = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if matrice2[i][j] > 0 and matriceOD[i][j] > 0:
+                res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+    return res
+\end{lstlisting}
+\defin\\
+On définit la distance au sens des moindres carrés comme :
+\[\text{Dist}_{\text{mc}}(M_1,\:M_2) = \sum_i\sum_j (M_{1_{ij}}-M_{2_{ij}})^2.\]
+Tout comme l'entropie relative, c'est une donnée positive qui est nulle lorsque $M_1 = M_2$. On va chercher à rendre cette valeur la plus petite possible. L'avantage de cette comparaison est qu'elle fonctionne même pour les matrices avec des coefficients nuls ou négatifs.\\
+\\
+On s'intéresse également à l'entropie relative et la distance au sens des moindres carrés pour la matrice des marginales ($\gamma_{ij} = \mu_i \times \nu_j$). On peut alors regarder l'écart relatif entre les résultats pour l'une des deux méthodes et les résultats pour la matrice des marginales :\\
+\\
+\defin
+\[
+\text{Ecart relatif entropie relative} = \frac{S_{marginales}(vrai) -S_{trouve}(vrai)}{S_{marginales}(vrai)}.
+\]
+\defin
+\[
+\text{Ecart relatif distance moindres carrés}= \frac{\text{Dist}_{mc}(\text{marginales},\text{vrai}) - \text{Dist}_{mc}(\text{trouve},\text{vrai}) }{ \text{Dist}_{mc}(\text{marginales},\text{vrai})}.
+\]
+\rmq $\:$ On fait le choix de ne pas mettre de valeur absolue au numérateur pour savoir si le résultat trouvé par minimisation de l'entropie est une amélioration (écart relatif positif) ou non (écart relatif negatif) par rapport au croisement des marginales.\\
+\\
+\underline{Test sur des lignes à 5 et 6 arrêts:}\\
+Le premier test que l'on effectue avec ces deux moyens de comparaison est celui sur les lignes à 5 et 6 arrêts que nous avions définies précédemment et pour lesquelles nous avons l'ensemble des matrices recevables et, parmi elles, celle qui minimise l'entropie (avec des entiers).\\
+\\
+Ligne à 5 arrêts (arrondis à 4 chiffres après la virgule) :\\
+\\
+\[
+\begin{split}
+\gamma_{\text{Scipy}} = &
+\begin{pmatrix}
+0 & 0.125 & 0.0527 & 0.04388 & 0.02842\\
+0 & 0 & 0.1973 & 0.12393 & 0.05377 \\
+0 & 0 & 0 & 0.08219 & 0.04281 \\
+0 & 0 & 0 & 0 & 0.25 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\\
+\\
+\gamma_{\text{Pénalisation}} = &
+\begin{pmatrix}
+0 & 0.125 & 0.0625 & 0.04167 & 0.02083\\
+0 & 0 & 0.1875 & 0.0125 & 0.0625 \\
+0 & 0 & 0 & 0.08333 & 0.04167 \\
+0 & 0 & 0 & 0 & 0.25 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}\\
+\\
+\gamma_{\text{Min entropie valeurs entières normalisée}} = &
+\begin{pmatrix}
+0 & 0.125 & 0.125 & 0 & 0\\
+0 & 0 & 0.125  & 0.125  & 0.125  \\
+0 & 0 & 0 & 0.125  & 0 \\
+0 & 0 & 0 & 0 & 0.25 \\
+0 & 0 & 0 & 0 & 0
+\end{pmatrix}
+\end{split}
+\]
+\vspace{0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/5arrets.png}
+    \caption{Résultat comparaison pour la ligne à 5 arrêts}
+\end{figure}
+Pour cette ligne, on observe une amélioration de l'entropie relative et de la distance au sens des moindres carrés pour les deux méthodes avec des résultats légèrement meilleurs pour la méthode de pénalisation. On remarque surtout que le temps de traitement est très rapide. Pour les deux lignes, la durée du traitement est de quelques centièmes de secondes.\\
+\\
+Ligne à 6 arrêts (arrondis à 4 chiffres après la virgule) :\\
+\[
+\begin{split}
+\gamma_{\text{Scipy}} = &
+\begin{pmatrix}
+0 & 0.1053 & 0.0902 & 0.0226 &0.0251& 0.0201\\
+0 & 0 & 0.1203 & 0.0301 & 0.0334 & 0.0267\\
+0 & 0 & 0 & 0.1053 & 0.1169 & 0.0936 &\\
+0 & 0 & & 0 0 & 0.0877 & 0.0702 & \\
+0 & 0 & 0 & 0 & 0& 0.0526 &\\
+0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}\\
+\\
+\gamma_{\text{Pénalisation}} = &
+\begin{pmatrix}
+0 & 0.1043 & 0.0913 & 0.0252 & 0.2763 & 0.0221\\
+0 & 0 & 0.1190  & 0.0328  & 0.036 & 0.0288  \\
+0 & 0 & 0 & 0.1061  & 0.1167 & 0.0931 \\
+0 & 0 & 0 & 0 & 0.0886 & 0.0707\\
+0 & 0 & 0 & 0 & 0 & 0.0553\\
+0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}\\
+\\
+\gamma_{\text{Min entropie valeurs entières normalisée}} = &
+\begin{pmatrix}
+0 & 0.1053 &  0.1053  & 0 & 0 & 0.0526\\
+0 & 0 &  0.1053 &  0.0526  &  0.0526 & 0\\
+0 & 0 & 0 &  0.1053   &  0.1053  &  0.1053\\
+0 & 0 & 0 & 0 &  0.1053 &  0.0526\\
+0 & 0 & 0 & 0 & 0 &  0.0526\\
+0 & 0 & 0 & 0 & 0 & 0
+\end{pmatrix}
+\end{split}
+\]
+\vspace{0.3cm}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/6arrets.png}
+    \caption{Résultats des comparaisons pour la ligne à 6 arrêts}
+\end{figure}
+Pour la ligne à 6 arrêts, on observe des résultats similaires à ceux pour la ligne à 5 arrêts : une très bonne amélioration du résultat vis-à-vis de l'entropie relative et de la distance au sens des moindres carrés pour les deux méthodes et un temps de traitement très faible de l'ordre du centième de seconde.\\
+\\
+\underline{Test sur des données réelles :}\\
+Il semble pertinent de comparer également les deux algorithmes sur de vraies données. Par le biais de Rennes Métropole, nous avons accès à de véritables données de déplacements issues de \href{https://metropole.rennes.fr/une-enquete-sur-les-deplacements-dans-le-reseau-star}{l'enquête réalisée au printemps 2023} où des matrices Origine-Destination avait été construites pour chaque ligne sur des tranches horaires de 15 minutes. On s'intéresse aux données de différentes lignes avec des tailles différentes et des types de trajets différents : les deux lignes de métro pendant une journée de semaine (15 arrêts chacune), la ligne C4 (35 arrêts) et la ligne C7 (19 arrêts). À chaque fois, nous avons travaillé sur la plage horaire de 8h45-8h59.\\
+\\
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/Ajob.png}
+    \caption{Résultats des comparaisons pour la ligne a du métro rennais direction Kennedy un jour de semaine}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/Asam.png}
+    \caption{Résultats des comparaisons pour la ligne a du métro rennais direction Kennedy un samedi}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/Bjob.png}
+    \caption{Résultats des comparaisons pour la ligne b du métro rennais direction Viasilva}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/C4.png}
+    \caption{Résultats des comparaisons pour la ligne de bus C4 direction ZA St Sulpice}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Images/comparaison/C7.png}
+    \caption{Résultats des comparaisons pour la ligne de bus C7 direction Bruz}
+\end{figure}
+Pour des données réelles et des lignes plus longues, les résultats sont plus mitigés.\\ Tout d'abord on peut observer la forte augmentation du temps de traitement de la méthode Scipy avec le nombre d'arrêts : quelques centièmes de secondes pour 5-6 arrêts contre 2 minutes pour les 19 arrêts de la ligne C7 et pas de résultats après plus d'une heure pour les 35 arrêts de la ligne C4. On observe également une augmentation du temps de traitement pour la méthode de pénalisation mais elle reste bien moins importante. En suite, à l'exception de la ligne C7, les résultats des deux méthodes sont à peine meilleurs voire pires que ceux de la matrice de croisement des marginales pour la distance aux moindres carrés. Cependant, pour l'entropie relative les deux méthodes de minimisation restent plus intéressantes que la matrice de croisement des marginales et notamment la méthode de pénalisation qui a de meilleurs résultats pour la plupart des lignes. \\
+\\
+Ces trois tests nous ont permis de voir que la qualité de la méthode de pénalisation n'était pas très bonne comparer à celle de Scipy. Les méthodes de pénalisation et SciPy se sont montrées performantes en termes de temps et d'amélioration par rapport à la matrice de croisement des marginales pour l'entropie relative ainsi que pour la distance au sens des moindres carrés pour un nombre très réduit d'arrêts. Cependant, les deux méthodes ont de mauvais résultats dans l'ensemble pour des lignes avec plus d'arrêts : Scipy devient très lent et les deux méthodes ont de mauvais résultats pour la comparaison avec la distance au sens des moindres carrés. De plus, même si résultats sont plus positifs pour l'entropie relative, il faut garder en mémoire que le calcul de l'entropie relative est un peu fallacieux dans le code puisque l'on ignore les valeurs négatives et nulles, les résultats ne sont peut-être pas réllement aussi bons.
+\section{Deux autres méthodes probabilistes}
+Dans le cadre de sa thèse \cite{these_remi_coulaud}, Rémi Coulaud s'est intéressé à la charge à bord des zones des rames de la ligne H du transilien. L'objectif était de prévoir, à partir des données de montées et de descentes de chaque zone, les déplacements des voyageurs entre les zones et ainsi connaitre le taux d'occupation de celles-ci. Ce problème est assez proche de celui de la sélection d'une matrice Origine-Destination et il est possible d'adapter les deux méthodes probabilistes proposées à notre problématique. Pour cela, nous allons tout d'abord évoquer quelques notions de probabilités et statistiques \cite{poly_françois} puis présenter les deux modèles proposés par \cite{these_remi_coulaud} et leurs résultats.
+\subsection{Notions de probabilités et statistiques}
+\defin (Loi multinomiale)\\
+On dit qu'un vecteur aléatoire ($X_1, \dots, X_r$) suit une loi multinomiale de paramètres $n, p_1, \dots, p_r$ avec $p_i \in ]0;1[$ et $p_1 + \dots + p_r = 1$ si :\\
 \begin{itemize}
-    \item Existe-t-il toujours un équilibre de Nash pour le cas du temps de parcours d'un plan de mobilité ?\\
-    \item Si oui, est-il unique ? optimal ?\\
-    \item Comment trouver cet équilibre ?
+    \item $X_1(\Omega) = \dots = X_r(\Omega) = \{0,\dots,n\}.$\\
+    \item La loi de ($X_1, \dots, X_r$) est donnée par :\[ P((X_1, \dots, X_r) =(k_1, \dots, k_r)) = \frac{n!}{k_1!\dots k_r!}p_1^{k_1}\dots p_r^{k_r}\] si $k_1 + \dots + k_r = n$, 0 sinon.\\
 \end{itemize}
-\section{Autres méthodes}
-Thèse de Remy Coulon
+\exemple Une urne contenant des boules de $r$ couleurs notées $c_1, \dots, c_r$. On note $p_i$ la proportion de boules de couleur $c_i$. On effectue $n$ tirages avec remise, et on note $X_i$ le nombre de boules de couleur $c_i$ tirées. Alors ($X_1, \dots, X_r$) suit une loi multinomiale de paramètres  $n, p_1, \dots, p_r$.\\
+\\
+\defin (Matrice stochastique)\\
+On dit que $A \in \mathcal{M}_n(\R)$ est une matrice stochastique si tous ses coefficients sont compris entre 0 et 1 et si la somme de chaque ligne est égale à 1. De plus, elle est dite bistochastique si la somme de chaque colonne est égale à 1.\\
+\\
+Lorsque l'on souhaite déterminer un paramètre $\theta$ d'une loi, une des méthodes couramment utilisées est celle du maximum de vraisemblance. La vraisemblance mesure de combien des données $x_1, \dots, x_n$ collent à la mesure de probabilité de paramètre $\theta$. Pour mesurer la grandeur de ces probabilités, on les multiplie.\\
+\\
+\defin (Vraisemblance d'une loi discrète)\\
+Soit $\theta$ le paramètre d'un modèle statistique où la loi de X est discrète. Soit $x_1, \dots, x_n$ les données. La vraisemblance des données $x_1, \dots, x_n$  est :\[
+\mathcal{L}(x_1, \dots, x_n ; \theta) := \prod^n_{i=1} \mathbb{P}(X= x_i ; \theta)
+\]
+\exemple Soit X une variable aléatoire suivant une loi de Bernoulli de paramètre $\theta$ : $\mathbb{P}(X=1) = \theta$ et $\mathbb{P}(X=0) = 1- \theta$. On considère les données $x_1, \dots, x_n$. La vraisemblance de ces données est :\[
+\mathcal{L}(x_1, \dots, x_n ; \theta) = \theta^{\sum^n_{i=1}x_i}(1-\theta)^{\sum^n_{i=1}1- x_i}
+\]
+Pour une loi continue, les probabilités $\mathbb{P}(X= x_i ; \theta)$ sont nulles. Donc à la place, on regarde la fonction de densité de la loi $p(. ; \theta)$.\\
+\\
+\defin (Vraisemblance d'une loi continue)\[
+\mathcal{L}(x_1, \dots, x_n ; \theta) := \prod^n_{i=1}p(x_i ; \theta)
+\]
+On cherche alors à maximiser la vraisemblance, $i.e.$ à trouver la valeur du paramètre $\theta$ pour laquelle la vraisemblance est maximale pour des données $x_1, \dots, x_n$ fixées. La valeur $\theta$ pour laquelle la vraisemblance est maximale est appelée estimateur du maximum de vraisemblance.\\
+\\
+\defin (Estimateur du maximum de vraisemblance)\\
+Un estimateur de maximum de vraisemblance est une fonction $\hat{\theta}_n$ telle que \[
+\hat{\theta}_n(x_1, \dots, x_n) \in argmax_{\theta} \: \mathcal{L}(x_1, \dots, x_n ; \theta)
+\]
+En pratique, il est souvent plus simple de calculer la log-vraisemblance $l = log(\mathcal{L})$ grâce aux  propriétés du logarithme et par notamment son caractère monotone, la valeur qui maximise la log-vraisemblance maximisera également la vraisemblance.
+
+\subsection{Modélisation des déplacements au sein d'une rame}
+\subsubsection{Problématique et lien avec la reconstruction des matrices Origine-Destination}
+Pour ce problème, on dispose de données sur les montées et descentes pour un train et une journée donnés et pour chaque gare et chaque zone des rames qui sont issues de capteurs infra-rouges placés au niveau des portes. Les voyageurs se déplacent ensuite librement entre les $I$ zones d'une même rame et l'objectif est de déterminer le taux d'occupation de chacune des zones pour en informer les usagers,  leur permettre de se répartir et d'augmenter leur confort.\\
+\\
+Plusieurs hypothèses sont faites :\\
+Hypothèse 1 : Les usagers montent dans une zone $i$, se déplacent et s'installent en zone $j$ et descendent en zone $j$. Ils ne se re-déplacent pas pour descendre.\\
+\\
+Hypothèse 2 : La charge à bord d'une gare donnée ne dépend que de la charge à bord de la gare précédente.\\
+\\
+Hypothèse 3 : Les déplacements des personnes montées en $i$ ne sont pas affectés par ceux des personnes montées en $j$.\\
+\\
+L'objectif est d'obtenir la matrice $P = (p_{i,j})$ qui décrit les probabilités pour une personne montée dans une zone $i$ de se déplacer en zone $j$ (et de descendre en $j$).\\
+\\
+La recherche de $\gamma$ la matrice Origine-Destination d'une ligne de bus est un cas particulier de l'estimation de $P = (p_{i,j})$ où il y a seulement deux gares : les gens montent, se déplacent dans la rame jusqu'à leur zone de descente et descendent à la gare suivante. On obtient alors la matrice des probabilités de déplacement d'un usagé monté dans une zone et en multipliant par le nombre de personnes montées, on peut alors retrouver la matrice Origine-Destination :
+\begin{adjustwidth}{-2cm}{-2cm}
+\[\gamma = 
+\begin{pmatrix}
+p_{1,1}\mu_1 & \cdots & p_{1,I}\mu_1 & | & \mu_0 \\
+\vdots & \ddots & \vdots  & | &\vdots \\
+ p_{I,1}\mu_I & \cdots & p_{I,I}\mu_I &| &\mu_I\\
+--- & ---& ---&-\\
+\nu_1 & \cdots & \nu_I
+\end{pmatrix}\]
+\end{adjustwidth}
+Il faut cependant rajouter des contraintes supplémentaires dans le problème pour coller au cadre du problème des matrices OD :
+\begin{itemize}
+    \item Il faut que $P$ soit bistochastique et non plus seulement stochastique pour que la contrainte sur la somme sur les colonnes soit bien vérifiée.\\
+    \item Il faut poser la contrainte d'avoir P triangulaire strictement supérieure à droite puisque les voyageurs de la ligne de bus vont vers le sens croissant des arrêts et ne peuvent pas revenir en arrière.
+\end{itemize}Il faut également poser la contrainte \\
+\\
+Pour estimer $P$, deux méthodes sont proposées : une méthode de minimisation des moindres carrés sous contraintes et une méthode probabiliste.\\
+\\
+Voici les notations utilisées par \cite{these_remi_coulaud} :\\
+\\
+$\mathcal{N}$ : l'ensemble des couples $(k,d)$ de trains et de jours.\\
+\\
+$a_s^{k,d} = (a_{s,1}^{k,d}, \cdots, a_{s,I}^{k,d})$ le vecteur des descentes à la gare $s$ pour le train $k$ le jour $d$.\\
+\\
+$b_s^{k,d} = (b_{s,1}^{k,d}, \cdots, b_{s,I}^{k,d})$ le vecteur des montées à la gare $s$ pour le train $k$ le jour $d$.\\
+\\
+$x_{s,.} = \sum^I_{i=1} x_{s,i}$ la somme selon les zones pour une gare $s$.\\
+\\
+$x_{.,i} = \sum^S_{s=1} x_{s,i}$ la somme selon les gares pour une zone $i$.\\
+\\
+$x_{.,.} = {i=1}\sum^S_{s=1} x_{s,i}$ la somme selon les gares et les zones.
+\subsubsection{Moindres carrés sous contraintes}
+Le premier modèle proposé par \cite{these_remi_coulaud} est un modèle de minimisation des moindres carrés.\\
+\\
+On considère le problème comme un problème de régression linéaire multivariée sous contraintes où le vecteur ligne des descentes en fin de trajet $a_. = (a_{.,1}, \dots, a_{.,I})$ est le vecteur des variables à expliquer, le vecteur ligne des montées par zone $b_. =(b_{.,1}, \dots, b_{.,I})$ est la variable explicative et les coefficients de la régression sont les $p_{i,j}$ de la matrice $P$. Les contraintes sont que la somme des coefficients sur chaque ligne est égal à 1 et que les $p_{i,j}$ sont compris entre 0 et 1 (\textit{ie.} $P = (p_{ij})$ est stochastique). Le problème à résoudre est le suivant :\[
+A_. = b_.P + \epsilon
+\]
+où $\epsilon$ est le vecteur des résidus.\\
+\\
+Les observations se font sur l'ensemble des trajets $(k,d)$ ce qui nous donne le problème des moindres carrés suivant :\[
+\sum_{(k,d) \in \mathcal{N}} \lVert a_.^{k,d} - b_.^{k,d}P\lVert^2_2 = \sum_{(k,d) \in \mathcal{N}} \sum_{j=1}^I(a_{.,j}^{k,d}-\sum^I_{i=1}b^{k,d}_{.,i}p_{i,j})^2
+\]
+L'estimation de $P$ est alors la solution du problème des moindres carrés :
+\[
+argmin_P \sum_{(k,d) \in \mathcal{N}} \lVert a_.^{k,d} - b_.^{k,d}P\lVert^2_2, \quad P \text{ est stochastique}
+\]
+Il s'agit d'un problème d'optimisation quadratique sous contraintes linéaires que l'on peut résoudre numériquement. 
+\subsubsection{Maximum de vraisemblance}
+Le second modèle proposé par \cite{these_remi_coulaud} est une modèle par maximisation de la vraisemblance.\\
+\\
+Pour chaque zone $i$ parmi les $I$ zones, les déplacements des voyageurs sont modélisés par un vecteur aléatoire $U_{.,i}$ à $I$ composantes où chaque $U_{.,i}$ suit une loi multinomiale $\mathcal{M}(b_{.,i},p_{i,1}, \dots, p_{i,I})$ avec $b_{.,i}$ le nombre de personnes montées en zone $i$ et $p_{i,j}$ la probabilité qu'un voyageur monté en $i$ se déplace en zone $j$. L'ensemble des $p_{i,j}$ forme alors la matrice de passage $P$. L'hypothèse que les déplacements des personnes montées en $i$ ne sont pas affectés par ceux des personnes montées en $j$ se traduit par $\forall i \neq j \in \{1, \dots, I\}$ $U_{.,i} \independent U_{.,j}$.\\
+\\
+Le vecteur des descentes par zones $A_.$ est donc la somme des déplacements des voyageurs par zone :\[
+A_. = \sum_{j=1}^I U_{.,j}
+\]
+$A_.$ est donc une somme de lois multinomiales indépendantes, mais pas identiques. On ne connait\textit{a priori} pas la loi de $A_.$ mais une approximation est proposée : une loi multinomiale $\mathcal{M}(b_{.,.},\pi_{.,1}, \dots, \pi_{.,I})$ avec $\pi_.,j = \sum_{i=1}^I r_{.,i}p_{i,j}$ où $r_{.,i} = \frac{b_{.,i}}{b_{.,.}}$. La probabilité de déplacement de $i$ à $j$ est pondérée par la proportion de personnes à monter en zone $i$.\\
+\\
+La loi approximée de $A_.$ a donc pour densité :\[
+\mathbb{P}(A_. = a_. ; b_.) = \prod_{j=1}^I \frac{b_{.,.}!}{a_{.,j}!}(\sum^I_{i=1}r_{.,i}p_{i,j})^{a_{.,j}}
+\]
+On va alors chercher $P$ permettant de maximiser la vraisemblance de cette loi.\\
+\\
+La partie de la log-vraisemblance associée à une observation $(k,d)$ ne dépendant que des paramètres est :\[
+l(a^{k,d}_. ; P, b^{k,d}_.) = \sum_{j=1}^I a_{.,j}^{k,d}log(\sum^I_{i=1}r_{.,i}^{k,d}p_{i,j})
+\]
+Et comme toutes les observations ($k,d$) sont supposées indépendantes et ont la même loi, cette partie de la log-vraisembalnce devient :\[
+l(P) = \sum_{(k,d)\in \mathcal{N}}\sum_{j=1}^I a_{.,j}^{k,d}log(\sum^I_{i=1}r_{.,i}^{k,d}p_{i,j})
+\]
+\rmq : La partie de la log-vraisemblance qui n'apparait pas ne dépend que des montées et des descentes, il n'est donc pas nécessaire de les prendre en compte pour une maximisation de la log-vraisemblance.\\
+\\
+La recherche de la matrice stochastique $P$ qui permet de maximiser la log-vraisemblance est donc un problème d'optimisation convexe qui peut être résolu numériquement.
+\subsubsection{Résultats}
+Pour évaluer les performances des deux méthodes d'estimation, il a été choisi de comparer la qualité des prévisions des descentes par les deux méthodes avec la stratégie où l'on suppose qu'il n'y a pas de déplacement, qui était alors la solution adoptée par Transilien. Cette comparaison se base sur un jeu de données avec plus de 3500 trajets effectués entre Gare du Nord et Pontoise en 2021. Le jeu est ensuite séparé en un jeu d'entrainement (75\%) et un jeu de test (25\%) et trois métriques différentes sont utilisées pour évaluer la qualité de l'estimation notée $\hat{a_.}$ : 
+\begin{itemize}
+    \item La moyenne des erreurs absolues :\[
+    \frac{1}{\text{Card(test)}}\sum_{(k,d)\in \text{test}}\lVert a_{.}^{k,d} - \hat{a}_{.}^{k,d}\lVert_1\]
+    \item la moyenne du pourcentage des erreurs absolues :\[
+    \frac{1}{\text{Card(test)}}\sum_{(k,d)\in \text{test}}\lVert \frac{a_{.}^{k,d} - \hat{a}_{.}^{k,d}}{a_{.}^{k,d}} \lVert_1
+    \]
+    \item la racine de la moyenne des erreurs au carré :\[
+    \sqrt{
+    \frac{1}{\text{Card(test)}}\sum_{(k,d)\in \text{test}}\lVert a_{.}^{k,d} - \hat{a}_{.}^{k,d}\lVert^2_2}
+    \] 
+\end{itemize}
+Il ressort des tests que les deux méthodes d'estimation sont plus performantes que la stratégie où l'on suppose qu'il n'y a pas de déplacements avec une diminution par deux de l'erreur pour les deux méthodes qui ont des performances similaires. Cependant, on observe des différences entre les matrices de passage trouvées pour les rames avant et les rames arrière et \cite{these_remi_coulaud} indique donc qu'il est important de prendre le placement à quai et le sens de circulation en compte pour prévoir correctement les descentes.\\
+\\
+Ainsi, ces deux méthodes sont deux pistes intéressantes à adapter au problème de modélisation des trajets effectués par les voyageurs. Il serait par exemple intéressant de les tester sur les données fournies par Rennes Métropole.
 \section{Conclusion}
-\section{Références}
+Nous avons finalement deux algorithmes qui permettent de décrire l'ensemble des scénarios. Cependant, du fait de leur complexité élevée, le temps de calcul devient trop grand pour les lignes de plus d'une dizaine d'arrêts avec beaucoup de voyageurs et ne sont donc pas utilisables dans la réalité.\\
+\\
+La sélection d'un plan Origine-Destination par l'entropie s'est montré plus pertinente que l'estimation par le croisement des marginales pour de petites lignes avec un temps de calcul très faible. Cependant, on obtient des résultats plus mitigés pour les données réelles où les lignes sont plus longues et avec plus de voyageurs par la longueur du temps de calcul et la faible différence de qualité de prédiction par rapport au croisement des marginales.\\
+\\
+Les deux méthodes issues de la thèse de Rémi Coulaud sont intéressantes et permettraient peut-être d'apporter de meilleurs résultats que la minimisation de l'entropie. Le jeu de données de Rennes Métropole pourrait par exemple permettre de tester ces méthodes.
+\section{Remerciements}
+Je tiens à remercier Sylvain Faure et Bertrand Maury de m’avoir pris en stage, de m’avoir accordé du temps et d’avoir guidé mon travail durant ces six semaines. Je voudrais également remercier toute l'équipe d'analyse numérique et équations aux dérivées partielles de m'avoir fait découvrir leur laboratoire, leur métier et leur recherche. La recette du gâteau au chocolat et au sarrasin se trouve en annexe (\ref{recette}).
+\newpage
+\addcontentsline{toc}{section}{Références}
 \bibliography{biblio}
+\newpage
 \section{Annexe}
+\label{annexe}
+On peut retrouver l'ensemble des codes Python sur \href{https://github.com/GaryTheCaptn/graphes_stage}{le repository github} du stage. Le code est séparé en 4 fichiers :\\
+\begin{itemize}
+    \item (\ref{graphes.py}) graphes.py  qui permet l'affichage des graphes de lignes de bus (sections 2-3).\\
+    \item (\ref{bus.py}) bus.py où se trouvent les fonctions de passage du point de vue lagrangien à eulérien et inversement (sections 2-3).\\
+    \item (\ref{extraction_donnees.py}) extraction\_donnees.py qui contient la fonction d'extraction des données des fichiers xlsx de Rennes Métropole (section 4).\\
+    \item (\ref{minimisation_entropie.py}) minimisation\_entropie.py qui contient les fonctions de minimisation de l'entropie pour la sélection d'un plan origine-destination pour les méthodes de pénalisation et scipy ainsi que les fonctions pour les tests réalisés (section 4).
+\end{itemize}
+\subsection{graphes.py}
+\label{graphes.py}
+\begin{lstlisting}
+import matplotlib.pyplot as plt
+import networkx as nx
+from bus import lagrange_to_euler
+
+
+# Fonctions de conversion
+def mv_to_b(m, v):
+    """
+    :param m: liste d'entier des montees a chaque arret
+    :param v: liste d'entier des descentes a chaque arret
+    :return: liste d'entier du bilan des montees et descentes a chaque arret
+    """
+    return [m[i] - v[i] for i in range(0, len(m))]
+
+
+def mv_to_p(m, v):
+    """
+    :param m: liste d'entier des montees a chaque arret
+    :param v: liste d'entier des descentes a chaque arret
+    :return: la liste du nombre de voyageurs au depart du point i
+    """
+    p = [m[0]]
+    for i in range(1, len(m) - 1):
+        p += [p[i - 1] + m[i] - v[i]]
+
+    return p
+
+
+def p_to_b(p):
+    """
+    :param p: liste d'entier du nombre de personnes transportees entre les arrets
+              p[i] = personnes transportees entre l'arret i et l'arret i+1
+    :return: liste d'entier du bilan des montees et descentes a chaque arret
+    """
+    return [p[0]] + [p[i] - p[i - 1] for i in range(1, len(p))] + [-p[len(p) - 1]]
+
+
+def b_to_p(b):
+    """
+    :param b: liste d'entier du bilan des montees et descentes a chaque arret
+    :return: liste d'entier du nombre de personnes transportees entre les arrets
+              p[i] = personnes transportees entre l'arret i et l'arret i+1
+    """
+    p = [b[0]]
+    for i in range(1, len(b) - 1):
+        p = p + [p[i - 1] + b[i]]
+    return p
+
+
+# Fonctions de conversion
+def lagrange_to_graph(noms, M):
+    """
+    :param M: matrice OD carree d'entiers ou m_ij = nombre de personnes montees en i allant en j
+    :return: le graphe networkx associe
+    """
+    # Initialisation du graphe
+    G = nx.DiGraph()
+
+    # Creation des arrets comme noeuds
+    arrets = noms
+    G.add_nodes_from(arrets)
+
+    # Dessiner le graphe sans les noeuds fictifs
+    pos = nx.spring_layout(G)
+
+    # Definition des positions des noeuds reels
+    for i in range(len(arrets)):
+        pos[arrets[i]] = (0.5 * i, 0)
+
+    # Creation des arretes de la ligne de bus
+    trajets_ligne = [(noms[i], noms[i + 1]) for i in range(0, len(noms) - 1)]
+    G.add_edges_from(trajets_ligne)
+
+    # Creation des arretes pour les trajets des voyageurs (gamma_ij) et des noeuds ficitfs pour ces arretes
+    trajets_voyageurs_depart = []
+    trajets_voyageurs_arrivee = []
+    nbr_voyageurs = []
+    compteur = 0
+    for i in range(len(M[0])):
+        for j in range(i + 1, len(M[0])):  # Matrice triangulaire superieure
+            nb = M[i][j]
+            if nb > 0:
+                trajets_voyageurs_depart.append((arrets[i], f"edge_{compteur}"))
+                trajets_voyageurs_arrivee.append((f"edge_{compteur}", arrets[j]))
+                val = 0.04
+                if compteur % 2 == 0:
+                    val = -val
+                pos[f"edge_{compteur}"] = ((pos[arrets[i]][0] + pos[arrets[j]][0]) / 2, pos[arrets[i]][1] + val)
+                compteur += 1
+                nbr_voyageurs.append(nb)
+
+    G.add_edges_from(trajets_voyageurs_depart)
+    G.add_edges_from(trajets_voyageurs_arrivee)
+
+    # Creation des arretes rentrantes pour les voyageurs montants
+    for arret in arrets:
+        G.add_edge(f"start_{arret}", arret)
+
+    # Creation des arretes sortante pour les voyageurs descendants
+    for arret in arrets:
+        G.add_edge(arret, f"end_{arret}")
+
+    # Positionnement des noeuds fictifs de montees et descentes
+    for arret in arrets:
+        pos[f"start_{arret}"] = (pos[arret][0], pos[arret][1] + 0.1)
+        pos[f"end_{arret}"] = (pos[arret][0], pos[arret][1] - 0.1)
+
+    # Dessiner les noeuds reels
+    nx.draw_networkx_nodes(G, pos, nodelist=arrets, node_color='grey', node_size=1000)
+
+    # Ajouter les labels aux noeuds reels
+    nx.draw_networkx_labels(G, pos, labels={arret: arret for arret in arrets}, font_size=6)
+
+    # Dessiner les aretes incluant celles des noeuds fictifs
+    ## Trajets de la ligne de bus
+    nx.draw_networkx_edges(G, pos, edgelist=trajets_ligne, edge_color='black', arrows=True, arrowstyle='-|>')
+
+    ## Trajets des voyageurs
+    nx.draw_networkx_edges(G, pos, edgelist=trajets_voyageurs_depart, edge_color='blue', style='dotted', arrows=True,
+                           arrowstyle='-|>')
+    nx.draw_networkx_edges(G, pos, edgelist=trajets_voyageurs_arrivee, edge_color='blue', style='dotted', arrows=True,
+                           arrowstyle='-|>')
+    ## montees
+    nx.draw_networkx_edges(G, pos, edgelist=[(f"start_{arret}", arret) for arret in arrets], edge_color='green',
+                           style='dashed', arrows=True, arrowstyle='-|>')
+    ## Descentes
+    nx.draw_networkx_edges(G, pos, edgelist=[(arret, f"end_{arret}") for arret in arrets], edge_color='red',
+                           style='dashed', arrows=True, arrowstyle='-|>')
+
+    # Calcul de donnees
+    m_M, v_M = lagrange_to_euler(M)
+    p_M = mv_to_p(m_M, v_M)
+
+    # Afficher les etiquettes des arretes
+    # Afficher le nombre de voyageurs entre chaque arret de la ligne
+    edge_labels = {(arrets[i], arrets[i + 1]): str(p_M[i]) for i in range(len(arrets) - 1)}
+
+    # Afficher le nombre de voyageurs pour chaque trajet gamma_i,j
+    edge_labels.update({trajets_voyageurs_depart[k]: nbr_voyageurs[k] for k in range(len(trajets_voyageurs_depart))})
+
+    # Afficher les etiquettes des arretes rentrantes et sortantes
+    edge_labels.update({("start_" + arrets[i], arrets[i]): "+" + str(m_M[i]) for i in range(len(arrets))})
+    edge_labels.update({(arrets[i], "end_" + arrets[i]): "-" + str(v_M[i]) for i in range(len(arrets))})
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='black')
+
+    plt.title("Graphe lagrangien")
+    plt.show()
+    return None
+
+
+def euler_to_graph(noms, m, v):
+    """
+        :param m: liste d'entiers des montees
+        :param v: liste d'entiers des descentes
+        :return: le graphe networkx associe
+    """
+
+    # Initialisation du graphe
+    G = nx.DiGraph()
+
+    # Creation des arrets comme noeuds
+    arrets = noms
+    G.add_nodes_from(arrets)
+
+    # Creation des arretes pour les trajets entre stations
+    trajets = [(noms[i], noms[i + 1]) for i in range(0, len(noms) - 1)]
+    G.add_edges_from(trajets)
+
+    # Creation des arretes rentrantes pour les voyageurs montants
+    for arret in arrets:
+        G.add_edge(f"start_{arret}", arret)
+
+    # Creation des arretes sortante pour les voyageurs descendants
+    for arret in arrets:
+        G.add_edge(arret, f"end_{arret}")
+
+    # Dessiner le graphe sans les noeuds fictifs
+    pos = nx.spring_layout(G)
+
+    # Definition des positions des noeuds reels
+    for i in range(len(arrets)):
+        pos[arrets[i]] = (len(m) * 2 * i, 0)
+
+    # Positionnement des noeuds fictifs
+    for arret in arrets:
+        pos[f"start_{arret}"] = (pos[arret][0], pos[arret][1] + 0.05)
+        pos[f"end_{arret}"] = (pos[arret][0], pos[arret][1] - 0.05)
+
+    # Dessiner les noeuds reels
+    nx.draw_networkx_nodes(G, pos, nodelist=arrets, node_color='grey', node_size=1000)
+
+    # Dessiner les aretes incluant celles des noeuds fictifs
+    nx.draw_networkx_edges(G, pos, edgelist=trajets, edge_color='black', arrows=True, arrowstyle='-|>')
+    nx.draw_networkx_edges(G, pos, edgelist=[(f"start_{arret}", arret) for arret in arrets], edge_color='green',
+                           style='dashed', arrows=True, arrowstyle='-|>')
+    nx.draw_networkx_edges(G, pos, edgelist=[(arret, f"end_{arret}") for arret in arrets], edge_color='red',
+                           style='dashed', arrows=True, arrowstyle='-|>')
+
+    # Ajouter les labels aux noeuds reels
+    nx.draw_networkx_labels(G, pos, labels={arret: arret for arret in arrets}, font_size=10)
+
+    # Afficher les etiquettes des arretes entre arrets
+    p = mv_to_p(m, v)
+    edge_labels = {(arrets[i], arrets[i + 1]): str(p[i]) for i in range(len(arrets) - 1)}
+
+    # Afficher les etiquettes des arretes rentrantes et sortantes
+    edge_labels.update({("start_" + arrets[i], arrets[i]): "+" + str(m[i]) for i in range(len(arrets))})
+    edge_labels.update({(arrets[i], "end_" + arrets[i]): "-" + str(v[i]) for i in range(len(arrets))})
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='black')
+
+    plt.title("Graphe eulerien")
+    plt.show()
+
+    return G
+\end{lstlisting}
+\subsection{bus.py}
+\label{bus.py}
+\begin{lstlisting}
+import numpy as np
+
+
+# Passage de donnees lagrangiennes a euleriennes
+def somme_ligne(M, i):
+    """
+    :param M: Une matrice d'entiers
+    :param i: une entier correspondant a une ligne
+    :return: la somme des valeurs de toutes les coefficients de la ligne i
+    """
+    res = 0
+    for j in range(0, len(M)):
+        res += M[i][j]
+    return res
+
+
+def somme_colonne(M, j):
+    """
+    :param M: Une matrice d'entiers
+    :param j: Un entier correspondant a une colonne
+    :return: La somme des coefficients de la colonne j
+    """
+    res = 0
+    for i in range(0, len(M)):
+        res += M[i][j]
+    return res
+
+
+def lagrange_to_euler(M):
+    """
+    :param M: matrice OD carree d'entiers ou m_ij = nombre de personnes montees en i allant en j
+    :return: m liste d'entiers des montees a chaque arret
+            v liste d'entiers des descentes a chaque arret
+    """
+    m = [somme_ligne(M, i) for i in range(0, len(M))]
+    v = [somme_colonne(M, j) for j in range(0, len(M))]
+    return m, v
+
+
+# Passage de donnees euleriennes a donnees lagrangiennes
+def euler_to_lagrange(m, v):
+    """
+    :param m: une liste d'entiers, les montees a chaque arret
+    :param v: une liste d'entiers, les descentes a chaque arret
+    :return: une liste contenant toutes les matrices OD correspondant aux donnees de montees et de descentes
+    """
+    n = len(m)
+    resultats = []
+
+    # Fonction recursive pour trouver les grilles
+    def backtrack(grille, m_rest, v_rest, ligne, col):
+        # Cas 1 : On a rempli la derniere cellule. On verifie si la grille est valide
+        #         Si elle est valide, on la sauvegarde dans les resultats.
+        if ligne == n:
+            if all(sum(grille[i]) == m[i] for i in range(n)) and all(
+                    sum(grille[i][j] for i in range(n)) == v[j] for j in range(n)):
+                resultats.append([row[:] for row in grille])
+            return
+
+        # Cas 2 : On a rempli la derniere colonne de la ligne actuelle. On passe a la ligne suivante
+        if col == n:
+            # On appelle la fonction backtrack pour continuer a remplir la matrice
+            # en se placant sur la ligne +1 et sur la premiere colonne
+            backtrack(grille, m_rest, v_rest, ligne + 1, 0)
+            return
+
+        # Cas 3 : On est sur la diagonale ou la partie inferieure gauche, la valeur doit etre 0.
+        if ligne >= col:
+            grille[ligne][col] = 0  # On met le coef a 0
+            backtrack(grille, m_rest, v_rest, ligne, col + 1)  # On continue a remplir la grille.
+
+        # Autre cas : On appelle la fonction backtrack pour chaque valeur que peut prendre la cellule
+        else:
+            # On definit la valeur maximale que peut prendre la cellule a partir de m_rest et v_rest.
+            max_val = min(m_rest[ligne], v_rest[col])
+            for val in range(max_val + 1):
+                grille[ligne][col] = val
+                # On modifie les valeurs de m_rest et v_rest pour remplir les cellules restantes
+                # Et respecter les conditions sur les sommes de lignes et de colonnes
+                m_rest[ligne] -= val
+                v_rest[col] -= val
+
+                # On appelle la fonction backtrack recursive pour remplir la cellule suivante
+                backtrack(grille, m_rest, v_rest, ligne, col + 1)
+
+                # On retablie les valeurs de m_rest et v_rest pour tester la nouvelle possibilite
+                m_rest[ligne] += val
+                v_rest[col] += val
+                grille[ligne][col] = 0
+
+    # On initialise une grille vide
+    grille_vide = [[0] * n for _ in range(n)]
+
+    # On appelle la fonction recursive backtrack pour remplir la grille et tester les possibilites.
+    backtrack(grille_vide, m.copy(), v.copy(), 0, 0)
+
+    return resultats
+
+
+def print_euler_to_lagrange(m, v):
+    """
+    Affiche dans la console Python toutes les matrices OD correspondants a m et v
+    :param m: liste d'entiers des montees a chaque arret
+    :param v: liste d'entiers des descentes a chaque arret
+    """
+    # On recupere les matrices
+    grilles = euler_to_lagrange(m, v)
+
+    # On les affiche
+    print(str(len(grilles)) + " grilles valides trouvees")
+    for i, grille in enumerate(grilles):
+        print(f"Grille {i + 1} :")
+        for row in grille:
+            print(row)
+        print()
+    return
+
+
+def minisation_entropie(grilles):
+    """
+    :param grilles: Une liste de matrices
+    :return: Une matrice qui minimise l'entropie
+    """
+
+    # Calcul du nombre total de voyageurs (identique pour toutes les grilles)
+    K = 0
+    first_grille = grilles[0]
+    for i in range(len(first_grille)):
+        for j in range(len(first_grille[0])):
+            K += first_grille[i][j]
+
+    # Definition "thermodynamique" avec une entropie positive donc on veut minimiser l'entropie
+    def calcul_entropie(grille):
+
+        sum = 0.0
+        for i in range(len(grille)):
+            for j in range(len(grille[i])):
+                if grille[i][j] != 0:
+                    sum = sum + (grille[i][j] / K * np.log2(grille[i][j] / K))
+        return sum
+
+    entropies = [calcul_entropie(grille) for grille in grilles]
+    indice_grille_min_entropie = entropies.index(min(entropies))
+    return grilles[indice_grille_min_entropie]
+
+
+def euler_to_best_lagrange(m, v):
+    """
+    :param m: Une liste d'entiers des montees
+    :param v: Une liste d'entiers des descentes
+    :return: Une matrice OD qui verifie m et v qui minimise l'entropie
+    """
+    grilles = euler_to_lagrange(m, v)
+    best_grille = minisation_entropie(grilles)
+    return best_grille
+
+
+def affiche_matrice(M):
+    """
+    Affiche la matrice M dans la console Python
+    :param M:
+    """
+    for ligne in M:
+        print(str(ligne) + '\n')
+
+
+if __name__ == "__main__":
+    # Test sur la ligne a de metro
+    noms_arrets_ligne_A = ["Poterie", "Blosne", "Triangle", "Italie", "HF", "Clem", "JC", "Gares", "CDG", "Repu",
+                           "StAnne", "Anatole Fr", "PC", "Villejean", "Kenndy"]
+    mA = [40, 37, 38, 39, 45, 36, 35, 50, 38, 50, 55, 35, 35, 32, 0]
+    vA = [0, 33, 35, 38, 42, 35, 33, 52, 40, 47, 49, 38, 40, 45, 38]
+    # print_euler_to_lagrange(mA, vA)
+
+    # Test sur une ligne a 6 arrets
+    noms_arrets6 = ["A1", "A2", "A3", "A4", "A5", "A6"]
+    m6 = [5, 4, 6, 3, 1, 0]
+    v6 = [0, 2, 4, 3, 5, 5]
+    # print_euler_to_lagrange(m6, v6)
+    best = minisation_entropie(euler_to_lagrange(m6, v6))
+    # euler_to_graph(noms_arrets6, m6, v6)
+    print("Matrice minimisant l'entropie pour ligne a 6 arrets")
+    affiche_matrice(best)
+
+    # Test sur une ligne a 5 arrets
+    noms_arrets5 = ["A1", "A2", "A3", "A4", "A5"]
+    m5 = [2, 3, 1, 2, 0]
+    v5 = [0, 1, 2, 2, 3]
+    # print_euler_to_lagrange(m5, v5)
+    best2 = minisation_entropie(euler_to_lagrange(m5, v5))
+    # euler_to_graph(noms_arrets5, m5, v5)
+    print("Matrice minimisant l'entropie pour ligne a 5 arrets")
+    affiche_matrice(best2)
+\end{lstlisting}
+\subsection{extraction\_donnees.py}
+\label{extraction_donnees.py}
+\begin{lstlisting}
+import pandas as pd
+
+
+def extraction_donnees(path, sheet, usecols, first_row):
+    noms = pd.read_excel(path, sheet_name=sheet, usecols=usecols, skiprows=first_row - 3, nrows=1)
+    numpy_noms = noms.to_numpy()
+
+    donnes = pd.read_excel(path, sheet_name=sheet, usecols=usecols, skiprows=first_row - 1)
+    donnes = donnes.fillna(0)
+    numpy_donnees = donnes.to_numpy()
+
+    return numpy_donnees, numpy_noms
+
+
+path = "C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_JOB.xlsx"
+sheet = "LAS2_trhor15=t_0845-0859"
+usecols = 'C:Q'
+
+if __name__ == "__main__":
+    donnes, noms = extraction_donnees(path, sheet, usecols, 7)
+    print(donnes)
+    print(noms)
+\end{lstlisting}
+\subsection{minimisation\_entropie.py}
+\label{minimisation_entropie.py}
+\begin{lstlisting}
+import scipy.optimize
+import time
+import random
+import pickle
+import os
+import numpy as np
+from extraction_donnees import extraction_donnees
+import matplotlib.pyplot as plt
+from bus import lagrange_to_euler
+
+
+def affiche_matrice_propre(M):
+    """
+    Affiche la matrice M dans la console Python
+    :param M: une matrice
+    """
+    # Determiner la largeur maximale d'un element du tableau pour l'alignement
+    largeur_max = 9
+    for ligne in M:
+        # Joindre les elements de la ligne avec un espace et les aligner a droite selon la largeur maximale
+        ligne_formatee = " ".join(f"{str(round(item, 5)):>{largeur_max}}" for item in ligne)
+        print(ligne_formatee)
+    print('\n')
+    return None
+
+
+def normalisation_vecteurs(m, v):
+    """
+    :param m: un liste d'entiers (montees)
+    :param v: une liste d'entiers (descentes)
+    :return: les vecteurs m et v normalises.
+    """
+    K = sum(m)
+    invK = 1 / K
+    normalized_m = [m_i * invK for m_i in m]
+    normalized_v = [v_i * invK for v_i in v]
+    return normalized_m, normalized_v
+
+
+def normalisation_matrice(matrice):
+    """
+    :param matrice: une matrice de FLOAT
+    :return: matrice normalisee
+    """
+    K = np.sum(matrice)
+    invK = 1 / K
+
+    # Copie la partie superieure de la matrice
+    matrice_normalisee = np.triu(matrice, 1)
+
+    # Normalisation de la partie superieure de la matrice
+    matrice_normalisee *= invK
+
+    return matrice_normalisee
+
+
+def generation_matrice_numeros(n):
+    """
+    :param n: entier, taille de la matrice
+    :return: une matrice avec les index de chaque case pour le vecteur colonne associe et des -1 pour les autres
+    """
+    m = np.full((n, n), -1, dtype=int)
+    index = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            m[i, j] = index
+            index += 1
+    return m
+
+
+def vecteur_initial(m, v, matrice_numeros, n):
+    """
+    :param m: liste d'entier (montees)
+    :param v: liste d'entier (descentes)
+    :param matrice_numeros: la matrice avec les indices de vecteur
+    :param n: taille des listes
+    :return: le vecteur initial pour la minimisation qui correspond au produit des marginales (m_i * v_j = gamma_ij)
+    """
+    d = int((n - 1) * n / 2)
+    x0 = [0] * d
+    for i in range(n - 1):
+        for j in range(i + 1, n):
+            index = matrice_numeros[i][j]
+            x0[index] = m[i] * v[j]
+    return x0
+
+
+def initialise_matrice_from_vect(x, n):
+    """
+    :param x: un vecteur d'entiers de taille d = n*(n-1)/2
+    :param n: la taille de la matrice
+    :return: la matrice de taille n dont les coefficients sur la partie superieure (stricte) droite
+    correspondent au vecteur x.
+    """
+    matrice = np.zeros((n, n), dtype=float)
+    index = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            matrice[i][j] = x[index]
+            index += 1
+    return matrice
+
+
+def qualite_resultat(vect_resultat, m, v, n):
+    """
+    :param vect_resultat: un vecteur avec les resultats d'une optimisation
+    :param m: les montees normalisees
+    :param v: les descentes normalisees
+    :param n: la taille de la matrice
+    :return: la qualite du resultat vis-a-vis du respect des contraintes
+    """
+    matrice_resultat = initialise_matrice_from_vect(vect_resultat, n)
+    dist = 0
+
+    # Convertir les listes m et v en tableaux NumPy pour les operations vectorisees
+    m = np.array(m)
+    v = np.array(v)
+
+    # Calcul de la distance pour le respect des sommes sur les lignes et les colonnes
+    somme_lignes = np.sum(matrice_resultat, axis=1)
+    somme_colonnes = np.sum(matrice_resultat, axis=0)
+    dist += np.sum((somme_lignes - m) ** 2) + np.sum((somme_colonnes - v) ** 2)
+
+    # Distance pour le respect des valeurs >= 0
+    vect_resultat = np.array(vect_resultat)
+    dist += np.sum(vect_resultat[vect_resultat < 0] ** 2)
+
+    return dist
+
+
+# Methode Trust-Region Constrained Algorithm de Scipy
+
+def generation_matrice_contraintes(n, matrice_numeros):
+    """
+    :param n: la taille de la matrice
+    :param matrice_numeros: la matrice avec les numeros vecteur
+    :return: la matrice de contraintes A tel que Ax = m++v
+    """
+    d = (n - 1) * n // 2
+
+    # Matrice vierge pour les contraintes
+    a = np.zeros((2 * n, d), dtype=int)
+
+    # Contraintes de montees
+    for i in range(n):
+        for j in range(i + 1, n):
+            temp_index = matrice_numeros[i][j]
+            if temp_index != -1:
+                a[i, temp_index] = 1
+
+    # Contraintes de descentes
+    for j in range(n):
+        for i in range(j):
+            temp_index = matrice_numeros[i][j]
+            if temp_index != -1:
+                a[n + j, temp_index] = 1
+
+    return a
+
+
+def optimisation_scipy(m, v, n):
+    """
+    :param m: liste des montees
+    :param v: liste des descentes
+    :param n: la taille des listes
+    :return: le resultat de la minimisation de l'entropie pour la methode scipy avec contraintes.
+    """
+    d = (n - 1) * n // 2
+
+    def entropie(x):
+        res = np.sum(x[x > 0] * np.log(x[x > 0]))
+        return res
+
+    def jacobian_entropie(x):
+        res = np.zeros_like(x)
+        positive_indices = x > 0
+        res[positive_indices] = np.log(x[positive_indices]) + 1
+        return res
+
+    def hessian_entropie(x):
+        d = len(x)
+        res = np.zeros((d, d))
+        positive_indices = x > 0
+        res[np.diag_indices_from(res)] = np.where(positive_indices, 1 / x, 0)
+        return res
+
+    # Matrice avec les numeros d'indices pour le passage de la vue vectorielle a la vue matricielle
+    matrice_numeros = generation_matrice_numeros(n)
+
+    # On cree la matrice de contraintes.
+    montes_descentes = np.concatenate((m, v))
+    matrice_contraintes = generation_matrice_contraintes(n, matrice_numeros)
+    contraintes_montes_descentes = scipy.optimize.LinearConstraint(matrice_contraintes, montes_descentes,
+                                                                   montes_descentes)
+
+    # On defini les bornes des valeurs ([0 ; +inf[)
+    bnds = [(0, None) for _ in range(d)]
+
+    # Vecteur initial, croisement des marginales
+    x0 = vecteur_initial(m, v, matrice_numeros, n)
+
+    # Calcul du resultat par Scipy
+    resultat = scipy.optimize.minimize(entropie, x0, jac=jacobian_entropie, hess=hessian_entropie,
+                                       method='trust-constr', bounds=bnds,
+                                       constraints=contraintes_montes_descentes)
+    vect_resultat = resultat.x
+    qual_resultat = qualite_resultat(vect_resultat, m, v, n)
+
+    return vect_resultat, qual_resultat
+
+
+# Methode de penalisaiton
+def index_ligne_colonne(index, matrice_numeros, n):
+    """
+    :param index: l'index d'un x_k dans le vecteur x
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :param n: taille de la matrice
+    :return: les indices i(ligne) et j (colonne) ou se trouve l'element x_i dans la matrice numeros
+    """
+    # Convertir la matrice en un array NumPy
+    matrice_numeros = np.array(matrice_numeros)
+
+    # Trouver les indices ou la valeur est egale a l'index
+    result = np.where(matrice_numeros == index)
+
+    if result[0].size > 0 and result[1].size > 0:
+        return result[0][0], result[1][0]
+    else:
+        return -1, -1
+
+
+def liste_numeros_meme_ligne(i, matrice_numeros, n):
+    """
+    :param i: un numero de ligne
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :param n: taille de la matrice
+    :return: la liste des indices qui sont sur la ligne i.
+    """
+    # Convertir la matrice en un array NumPy
+    matrice_numeros = np.array(matrice_numeros)
+
+    # Selectionner la ligne i a partir de la matrice et ignorer les valeurs -1
+    ligne_i = matrice_numeros[i, i + 1:n]
+
+    # Filtrer les valeurs -1
+    res = ligne_i[ligne_i != -1]
+
+    return list(res)
+
+
+def liste_numeros_meme_colonne(j, matrice_numeros):
+    """
+    :param j: un numero de colonne
+    :param matrice_numeros: matrice avec les index de x, -1 sinon.
+    :return: la liste des indices qui sont sur la colonne j.
+    """
+    res = []
+    for i in range(0, j):
+        res.append(matrice_numeros[i][j])
+    return res
+
+
+def penalisation(m, v, eps, n):
+    """
+    :param m: liste des montees (normalise)
+    :param v: liste des descentes (normalise)
+    :param eps: valeur de la penalisation
+    :param n: longueur des listes
+    :return: la matrice OD minimisant l'entropie par la methode de penalisation
+    """
+    inv_eps = 1 / eps
+    matrice_numeros = generation_matrice_numeros(n)
+
+    # Definition de la fonction a minimiser avec l'ajout des contraintes
+    def entropie_et_contraintes(x):
+        res = 0
+        x_pos = x[x > 0]
+        res += np.sum(x_pos * np.log(x_pos))
+
+        matrice = initialise_matrice_from_vect(x, n)
+        for i in range(n - 1):
+            indices_ligne = matrice_numeros[i, i + 1:n]
+            sum_ligne = np.sum(x[indices_ligne[indices_ligne != -1]])
+            res += inv_eps * (sum_ligne - m[i]) ** 2
+
+        for j in range(1, n):
+            indices_colonne = matrice_numeros[0:j, j]
+            sum_colonne = np.sum(x[indices_colonne[indices_colonne != -1]])
+            res += inv_eps * (sum_colonne - v[j]) ** 2
+
+        res += np.sum(np.maximum(-inv_eps * x, 0) ** 2)
+        return res
+
+    # Definition de la jacobienne
+    def jacobian_entropie_et_contraintes(x):
+        res = []
+        index = 0
+        for x_i in x:
+            val = 0
+            if x_i > 0:
+                val += np.log(x_i) + 1
+            i, j = index_ligne_colonne(index, matrice_numeros, n)
+            liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros, n)
+            somme_ligne = 0
+            for k in liste_numeros_ligne:
+                somme_ligne += x[k]
+            somme_ligne = 2 * inv_eps * (somme_ligne - m[i])
+            val += somme_ligne
+
+            liste_numeros_colonne = liste_numeros_meme_colonne(j, matrice_numeros)
+            somme_colonne = 0
+            for k in liste_numeros_colonne:
+                somme_colonne += x[k]
+            somme_colonne = 2 * inv_eps * (somme_colonne - v[j])
+            val += somme_colonne
+            res.append(val)
+            index += 1
+        return res
+
+    # Fonction scipy
+    x0 = vecteur_initial(m, v, matrice_numeros, n)
+    # resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
+    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
+
+    return resultat
+
+
+def variation_epsilon(m, d, n):
+    """
+    :param m: liste d'entiers des montees (normalise)
+    :param d: liste d'entiers des descentes (normalise
+    :param n: la longueur des listes
+    :return: On renvoie le vecteur resultat et sa qualite. Si pas de resultat on renvoie un vecteur vide et une qualite
+     = -1
+    """
+    qualite = -1
+    eps = 0.01
+    resultat = penalisation(m, d, eps, n)
+    res_trouve = resultat.success
+    vector = resultat.x
+    if res_trouve:
+        qualite = qualite_resultat(vector, m, d, n)
+    return vector, qualite
+
+
+# Gradient a pas fixe (pas utilise)
+def gradient_pas_fixe(x0, pas, itmax, erreur, fct_gradient, m, v):
+    """
+    :param x0: vecteur initial (taille d)
+    :param pas: float
+    :param itmax: nombre maximal d'iterations
+    :param erreur: seuil d'erreur
+    :param fct_gradient: fonction gradient associee a la fonction a minimiser
+    :param m: liste d'entiers des montees (normalise)
+    :param v: lsite d'entiers des descentes (normalise)
+    :return: le vecteur resultat apres itmax iterations ou si l'erreur seuil a ete atteinte et la qualite du resutlat
+    """
+    # On pose l'initialisation
+    res = [x0]
+    iteration = 0
+    qual = 0
+    n = len(m)
+
+    while iteration < itmax:
+        # Si on a pas depasse le nombre maximal d'itereations, alors on applique l'algorithme
+        xk = res[iteration]
+        xk1 = np.array(xk - pas * fct_gradient(xk))
+        res.append(xk1)  # On ajoute l'iteration en cours a la liste des iteres.
+
+        # On regarde si le critere d'arret d'etre suffisammment proche de la solution est verifie
+        qual = qualite_resultat(xk1, m, v, n)
+        erreurk1 = qual  # On calcule l'erreur
+        if erreurk1 <= erreur:
+            # On est suffisament proche de la solution, on arrete l'algorithme.
+            iteration = itmax
+        else:
+            # On est pas encore assez proche, on va faire une autre iteration.
+            iteration += 1
+
+    return res, qual
+
+
+# Fonctions pour les tests :
+def distance_moindres_carres(matrice1, matrice2, n):
+    """
+    :param matrice1: Une matrice OD
+    :param matrice2: Une matrice OD
+    :param n: taille des matrices
+    :return: la distance entre les deux matrices coefficient par coefficient
+    """
+    matrice1 = np.array(matrice1)
+    matrice2 = np.array(matrice2)
+
+    # Calcul des differences
+    differences = matrice1 - matrice2
+
+    # Calcul de la somme des carres des differences au-dessus de la diagonale principale
+    res = np.sum(differences[np.triu_indices(n, k=1)] ** 2)
+
+    return res
+
+
+def distance_entropie_relative(matriceOD, matrice2, n):
+    """
+    :param matriceOD: matrice origine destination (avec des 0 potentiellement)
+    :param matrice2: matrice trouvee par optimisation
+    :param n: taille des matrices
+    :return: l'entropie relative S_matrice2(matrice_OD)
+    """
+    res = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if matrice2[i][j] > 0 and matriceOD[i][j] > 0:
+                res += matriceOD[i][j] * np.log(matriceOD[i][j] / matrice2[i][j])
+    return res
+
+
+# Test 1 : Comparaison qualite et temps entre les deux methodes a partir de donnees euleriennes
+def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
+    """
+    :param nbr_voyageurs: nombre cumule de voyageurs sur la ligne
+    :param nbr_arrets: nombre d'arrets sur la ligne
+    :return: une liste correspondant aux montees, une liste correspondant aux descentes
+    """
+    montees = []
+    descentes = []
+    arret_courant = 0
+    nbr_voyageurs_courant = 0
+    personnes_restantes = nbr_voyageurs
+
+    for i in range(0, nbr_arrets):
+
+        # Si on est au dernier arret, personne ne monte et tout le monde doit descendre
+        if i == nbr_arrets - 1:
+            montees_i = 0
+            descentes_i = nbr_voyageurs_courant
+
+        # Si on est a l'avant-dernier arret, il faut faire monter toutes les personnes qui manquent
+        elif i == nbr_arrets - 2:
+            montees_i = personnes_restantes
+            descentes_i = random.randint(0, nbr_voyageurs_courant)
+
+        # Sinon, on fait monter un nombre aleatoire de personnes (parmi les nombres de personnes restantes)
+        # On fait descendre un nombre aleatoire de personnes (parmi les voyageurs qui etaient dans le bus)
+        else:
+            montees_i = random.randint(0, personnes_restantes)
+            descentes_i = random.randint(0, nbr_voyageurs_courant)
+
+        montees.append(montees_i)
+        descentes.append(descentes_i)
+        personnes_restantes += -montees_i  # On enleve les personnes montees
+        nbr_voyageurs_courant = nbr_voyageurs_courant + montees_i - descentes_i  # On met a jour le nombre de voyageurs
+
+    return montees, descentes
+
+
+def comparaison_methodes_qualite_temps_vect_aleatoires():
+    liste_arrets = np.linspace(8, 10, 3)
+    liste_arrets = list(map(int, liste_arrets))
+    temps_eps = []
+    qualite_eps = []
+
+    temps_scipy = []
+    qualite_scipy = []
+
+    for nbr_arrets in liste_arrets:
+
+        # On defini les listes temporaires pour faire la moyenne pour nbr_arrets
+        temps_eps_temp = []
+        qualite_eps_temp = []
+
+        temps_scipy_temp = []
+        qualite_scipy_temp = []
+
+        for i in range(5):
+            print(str(nbr_arrets) + "." + str(i))
+            m, v = generation_vecteurs_euleriens_aleatoires(nbr_arrets * 8, nbr_arrets)
+            m, v = normalisation_vecteurs(m, v)
+
+            # On teste la methode eps
+            time_start_eps = time.time()
+            vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets)
+            qualite_eps_temp.append(qual_eps)
+            temps_eps_temp.append(time.time() - time_start_eps)
+
+            # On teste la methode scipy
+            time_start_scipy = time.time()
+            vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
+            qualite_scipy_temp.append(qual_scipy)
+            temps_scipy_temp.append(time.time() - time_start_scipy)
+
+        temps_eps.append(temps_eps_temp)
+        qualite_eps.append(qualite_eps_temp)
+
+        temps_scipy.append(temps_scipy_temp)
+        qualite_scipy.append(qualite_scipy_temp)
+
+    # Temps de calcul
+    plt.figure(figsize=(12, 6))
+    positions_group1 = np.array(range(len(liste_arrets))) * 2.0 - 0.3
+    positions_group2 = np.array(range(len(liste_arrets))) * 2.0 + 0.3
+
+    # Boxplots pour le premier groupe
+    plt.boxplot(temps_eps, positions=positions_group1, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightblue', color='blue'),
+                medianprops=dict(color='blue'),
+                whiskerprops=dict(color='blue'),
+                capprops=dict(color='blue'),
+                showfliers=False)
+
+    # Boxplots pour le deuxieme groupe
+    plt.boxplot(temps_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightgreen', color='green'),
+                medianprops=dict(color='green'),
+                whiskerprops=dict(color='green'),
+                capprops=dict(color='green'),
+                showfliers=False)
+
+    # Ajustement des labels et des positions des axes
+    plt.xticks(range(0, len(liste_arrets) * 2, 2), liste_arrets)
+    plt.xlabel('Nombre arrets')
+    plt.ylabel('Temps de traitement')
+    plt.title('Boxplot pour le temps de traitement en fonction du nombre d arrets et de la methode')
+    plt.grid(True)
+    plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
+                plt.Line2D([0], [0], color='lightgreen', lw=4)],
+               ['Penalisation', 'Scipy'])
+
+    plt.show()
+
+    # Temps de calcul
+    plt.figure(figsize=(12, 6))
+    positions_group1 = np.array(range(len(liste_arrets))) * 2.0 - 0.3
+    positions_group2 = np.array(range(len(liste_arrets))) * 2.0 + 0.3
+
+    # Boxplots pour le premier groupe
+    plt.boxplot(qualite_eps, positions=positions_group1, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightblue', color='blue'),
+                medianprops=dict(color='blue'),
+                whiskerprops=dict(color='blue'),
+                capprops=dict(color='blue'),
+                showfliers=False)
+
+    # Boxplots pour le deuxieme groupe
+    plt.boxplot(qualite_scipy, positions=positions_group2, widths=0.4, patch_artist=True,
+                boxprops=dict(facecolor='lightgreen', color='green'),
+                medianprops=dict(color='green'),
+                whiskerprops=dict(color='green'),
+                capprops=dict(color='green'),
+                showfliers=False)
+
+    # Ajustement des labels et des positions des axes
+    plt.xticks(range(0, len(liste_arrets) * 2, 2), liste_arrets)
+    plt.xlabel('Nombre arrets')
+    plt.ylabel('Qualite resultat')
+    plt.title('Boxplot pour la qualite du resultat en fonction du nombre d arrets et de la methode')
+    plt.grid(True)
+    plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
+                plt.Line2D([0], [0], color='lightgreen', lw=4)],
+               ['Penalisation', 'Scipy'])
+
+    plt.show()
+
+
+# Test 2, 3 : Comparaison (moindres carres puis entropie relative) matrices OD et matrices trouvees par les deux methodes.
+def comparaison_mc_entropie(matriceOD, name):
+    matriceOD = normalisation_matrice(matriceOD)
+    m, v = lagrange_to_euler(matriceOD)
+    n = len(m)
+    dossier = "C:/Users/garan/Documents/Stage L3/Code/bus/resultats_minimisation/"
+
+    # Test sur le vecteur marginales croisees
+    x0 = vecteur_initial(m, v, generation_matrice_numeros(n), n)
+    matrice_vecteur_marginale = initialise_matrice_from_vect(x0, n)
+    entropie_relative_vecteur_marginales = distance_entropie_relative(matriceOD, matrice_vecteur_marginale, n)
+    mc_vecteur_marginales = distance_moindres_carres(matriceOD, matrice_vecteur_marginale, n)
+    print("Pour le vecteur croisement des marginales :")
+    print("Entropie relative : " + str(entropie_relative_vecteur_marginales))
+    print("Distance moindres carres : " + str(mc_vecteur_marginales))
+    print("------" + '\n')
+
+    # Test des methodes de minimalisation den l'entropie
+
+    # Test methode penalisation
+    time_start = time.time()
+    vect_eps, qual_eps = variation_epsilon(m, v, n)
+    time_eps = time.time() - time_start
+
+    # On verifie s'il y a bien un resultat
+    if len(vect_eps) > 0:
+        # On initialise la matrice a partir du vecteur trouve par la minimisation
+        matrice_eps = initialise_matrice_from_vect(vect_eps, n)
+
+        # On sauvegarde la matrice dans un pickle
+        # Sauvegarder la matrices
+        nom_fichier = name + '_eps' + '.pkl'
+        with open(os.path.join(dossier, nom_fichier), 'wb') as f:
+            pickle.dump(matrice_eps, f)
+
+        # Calcul des distances (entropie relative et distance moindres carres)
+        entropie_relative_eps = distance_entropie_relative(matriceOD, matrice_eps, n)
+        distance_mc_eps = distance_moindres_carres(matriceOD, matrice_eps, n)
+
+        # Affichage du resultat
+        print("Resultats methode penalisation :")
+        print("Entropie relative : " + str(entropie_relative_eps))
+        print("Distance moindres carres " + str(distance_mc_eps))
+        print("Duree : " + str(time_eps))
+        affiche_matrice_propre(matrice_eps)
+    else:
+        print("Pas de resultats")
+        print("Duree traitement : " + str(time_eps))
+
+    # Test sur la methode scipy
+    time_start = time.time()
+    vect_scipy, qual_scipy = optimisation_scipy(m, v, n)
+    time_scipy = time.time() - time_start
+
+    # On verifie s'il y a un resultat
+    if len(vect_scipy) > 0:
+        # On initialise la matrice a partir du vecteur trouve
+        matrice_scipy = initialise_matrice_from_vect(vect_scipy, n)
+
+        # Sauvegarder la matrices
+        nom_fichier = name + '_scipy' + '.pkl'
+        with open(os.path.join(dossier, nom_fichier), 'wb') as f:
+            pickle.dump(matrice_scipy, f)
+
+        # On calcule les distances (entropie relative et moindres carres)
+        entropie_relative_scipy = distance_entropie_relative(matriceOD, matrice_scipy, n)
+        distance_mc_scipy = distance_moindres_carres(matriceOD, matrice_scipy, n)
+
+        # Affichage du resultat
+        print("Resultats methode Scipy :")
+        print("Entropie relative : " + str(entropie_relative_scipy))
+        print("Distance moindres carres " + str(distance_mc_scipy))
+        print("Duree : " + str(time_scipy))
+        affiche_matrice_propre(matrice_scipy)
+    else:
+        print("Pas de resultats")
+        print("Duree traitement : " + str(time_scipy))
+
+    return None
+
+
+# Fonction affichage des resultats d'optimisation
+def affichage_resultat_opti(m, v, type='scipy'):
+    """
+    Affiche dans le terminal le resultat de l'optimisation avec la methode choisie (normalise si les vect en entree sont
+    normalises)
+    :param m: liste d'entiers montees (normalise)
+    :param v: liste d'entiers descentes (normalise)
+    :param type: scipy ou epsilon
+    :return: None
+    """
+    time_start = time.time()
+    n = len(m)  # Ok
+    # On recupere le resultat
+    # scipy
+    if type == 'scipy':
+        vect_resultat, qual_resultat = optimisation_scipy(m, v, n)
+    # epsilon
+    else:
+        vect_resultat, qual_resultat = variation_epsilon(m, v, n)
+
+    # S'il y a un resultat
+    if len(vect_resultat) > 0:
+        matrice_resultat = initialise_matrice_from_vect(vect_resultat, n)
+        affiche_matrice_propre(matrice_resultat)
+        print("La qualite du resultat est de :" + '\n' + str(qual_resultat) + '\n')
+        print("Duree du traitement (secondes) :")
+        print(time.time() - time_start)
+    else:
+        print("Pas de resultat")
+
+
+if __name__ == "__main__":
+    # Donnees :
+
+    # Test 0 : Resultats optimisation pour les vecteurs 5 et 6 / A comparer avec les resultats de la recherche exhaustive
+    test0 = False
+    if test0:
+        matrice_entropie5 = [[0.0, 1.0, 1.0, 0.0, 0.0],
+                             [0.0, 0.0, 1.0, 1.0, 1.0],
+                             [0.0, 0.0, 0.0, 1.0, 0.0],
+                             [0.0, 0.0, 0.0, 0.0, 2.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0]]
+        print("Resultats ligne a 5 arrets")
+        comparaison_mc_entropie(matrice_entropie5, name='matrice_entropie5')
+        print(
+            "__________________________________________________________________________________________________________")
+        matrice_entropie6 = [[0.0, 2.0, 2.0, 0.0, 0.0, 1.0],
+                             [0.0, 0.0, 2.0, 1.0, 1.0, 0.0],
+                             [0.0, 0.0, 0.0, 2.0, 2.0, 2.0],
+                             [0.0, 0.0, 0.0, 0.0, 2.0, 1.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+        print("Resultats ligne a 6 arrets")
+        comparaison_mc_entropie(matrice_entropie6, name='matrice_entropie6')
+        print(
+            "__________________________________________________________________________________________________________")
+
+    # Test 1 : Comparaison de la qualite des resultats et du temps pour des vecteurs aleatoires.
+    test1 = True
+    if test1:
+        comparaison_methodes_qualite_temps_vect_aleatoires()
+
+    # Test 2 : Comparaison par entropie relative et moindres carres avec donnes reelles
+    test2 = False
+    if test2:
+        print("Resultats ligne A JOB 8h45-8h59" + "\n")
+        path_AJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_JOB.xlsx'
+        sheet_AJOB = 'LAS2_trhor15=t_0845-0859'
+        usecols_AJOB = 'C:Q'
+        firstrow_AJOB = 7
+        matrice_AJOB, noms_AJOB = extraction_donnees(path_AJOB, sheet_AJOB, usecols_AJOB, firstrow_AJOB)
+        comparaison_mc_entropie(matrice_AJOB, name='matrice_AJOB')
+        print("-------------------------------------------------------------------------------------------------------")
+        print("Resultats ligne A Samedi 8h45-8h59" + "\n")
+        path_ASam = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_SAMEDI.xlsx'
+        sheet_ASam = 'LAS2_trhor15=t_0845-0859'
+        usecols_ASam = 'C:Q'
+        firstrow_ASam = 7
+        matrice_ASam, noms_ASam = extraction_donnees(path_ASam, sheet_ASam, usecols_ASam, firstrow_ASam)
+        comparaison_mc_entropie(matrice_ASam, name='matrice_ASam')
+        print("-------------------------------------------------------------------------------------------------------")
+        print("Resultats ligne B JOB 8h45-8h59" + " \n")
+        path_BJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LB_JOB.xlsx'
+        sheet_BJOB = 'LBS2_trhor15=t_0845-0859'
+        usecols_BJOB = 'C:Q'
+        firstrow_BJOB = 7
+        matrice_BJOB, noms_BJOB = extraction_donnees(path_BJOB, sheet_BJOB, usecols_BJOB, firstrow_BJOB)
+        comparaison_mc_entropie(matrice_BJOB, name='matrice_BJOB')
+        print("-------------------------------------------------------------------------------------------------------")
+        print("Resultats ligne C4 JOB 8h45-8h59" + " \n")
+        path_C4JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
+        sheet_C4JOB = 'LC4S2_trhor15=t_0845-0859'
+        usecols_C4JOB = 'C:AK'
+        firstrow_C4JOB = 7
+        matrice_C4JOB, noms_C4JOB = extraction_donnees(path_C4JOB, sheet_C4JOB, usecols_C4JOB, firstrow_C4JOB)
+        comparaison_mc_entropie(matrice_C4JOB, name='matrice_C4JOB')
+        print("-------------------------------------------------------------------------------------------------------")
+        print("Resultats ligne C7 JOB 8h45-8h59" + " \n")
+        path_C7JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC7_JOB.xlsx'
+        sheet_C7JOB = 'LC7S1_trhor15=t_0845-0859'
+        usecols_C7JOB = 'C:U'
+        firstrow_C7JOB = 7
+        matrice_C7JOB, noms_C7JOB = extraction_donnees(path_C7JOB, sheet_C7JOB, usecols_C7JOB, firstrow_C7JOB)
+        comparaison_mc_entropie(matrice_C7JOB, name='matrice_C7JOB')
+        print("-------------------------------------------------------------------------------------------------------")
+\end{lstlisting}
+\subsection{Recette de gâteau au chocolat et au sarrasin}
+\label{recette}
+Sur demande des membres de l'équipe d'Analyse numérique et équations aux dérivées partielles, voici la recette du délicieux gâteau au chocolat et sarrasin. La recette est une adaptation de celle du \href{https://www.marmiton.org/recettes/recette_gateau-au-chocolat-des-ecoliers_20654.aspx}{gâteau au chocolat des écoliers} disponible sur Marmiton.
+\subsubsection*{Ingrédients pour environ 8 personnes :}
+\begin{itemize}
+\begin{minipage}[t]{0.4\linewidth}
+\item[o] Chocolat noir : 200g
+\item[o] Beurre \underline{\textbf{salé}} : 125g
+\item[o] Œufs : 4
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+\item[o] Sucre : 200g
+\item[o] Levure chimique : 1 sachet (11g)
+\item[o] Farine de sarrasin (blé noir): 100g
+\end{minipage}
+\end{itemize}    
+\subsubsection*{Étapes de préparation :}
+\begin{enumerate}
+    \item Préchauffer le four à 180°C
+    \item Dans un premier saladier, casser le chocolat et couper le beurre en morceaux et les faire fondre ensemble au micro-ondes jusqu'à ce que le mélange soit lisse.
+    \item Dans un second saladier, mélanger les œufs et le sucre ensemble jusqu'à ce que le mélange ait bien blanchi (cela peut prendre quelques minutes au batteur électrique).
+    \item Ajouter la farine et la levure au mélange oeufs/sucre et mélanger jusqu'à obtention d'un mélange homogène.
+    \item Ajouter le mélange chocolat/beurre à la préparation et mélanger à nouveau.
+    \item Avec une noisette de beurre, beurrer un moule.
+    \item Verser l'appareil à gâteau dans le moule et enfourner toujours à 180°C.
+    \item Selon le moule choisi, le temps de cuisson varie, c'est prêt lorsque la lame d'un couteau ressort propre (mais ceux qui préfèrent les fondants peuvent arrêter la cuisson un peu avant).
+    \item Bon appétit.
+\end{enumerate}
 \end{document}
