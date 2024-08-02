@@ -119,11 +119,13 @@ def qualite_resultat(vect_resultat, m, v, n):
     # Calcul de la distance pour le respect des sommes sur les lignes et les colonnes
     somme_lignes = np.sum(matrice_resultat, axis=1)
     somme_colonnes = np.sum(matrice_resultat, axis=0)
-    dist += np.sum((somme_lignes - m) ** 2) + np.sum((somme_colonnes - v) ** 2)
+    val0 = np.sum((somme_lignes - m) ** 2) + np.sum((somme_colonnes - v) ** 2)
+    dist += val0
 
     # Distance pour le respect des valeurs >= 0
     vect_resultat = np.array(vect_resultat)
-    dist += np.sum(vect_resultat[vect_resultat < 0] ** 2)
+    val =  np.sum(vect_resultat[vect_resultat < 0] ** 2)
+    dist += val
 
     return dist
 
@@ -260,7 +262,7 @@ def liste_numeros_meme_colonne(j, matrice_numeros):
     return res
 
 
-def penalisation(m, v, eps, n):
+def penalisation(m, v, eps, n, jacob=True):
     """
     :param m: liste des montees (normalise)
     :param v: liste des descentes (normalise)
@@ -299,8 +301,10 @@ def penalisation(m, v, eps, n):
             val = 0
             if x_i > 0:
                 val += np.log(x_i) + 1
+
             i, j = index_ligne_colonne(index, matrice_numeros, n)
             liste_numeros_ligne = liste_numeros_meme_ligne(i, matrice_numeros, n)
+
             somme_ligne = 0
             for k in liste_numeros_ligne:
                 somme_ligne += x[k]
@@ -313,33 +317,40 @@ def penalisation(m, v, eps, n):
                 somme_colonne += x[k]
             somme_colonne = 2 * inv_eps * (somme_colonne - v[j])
             val += somme_colonne
+
+            val -= 2*inv_eps*np.maximum(-x_i,0)
             res.append(val)
             index += 1
         return res
 
     # Fonction scipy
     x0 = vecteur_initial(m, v, matrice_numeros, n)
-    # resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
-    resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
+    if jacob == True :
+        resultat = scipy.optimize.minimize(entropie_et_contraintes, x0, jac=jacobian_entropie_et_contraintes)
+    else :
+        resultat = scipy.optimize.minimize(entropie_et_contraintes, x0)
 
     return resultat
 
 
-def variation_epsilon(m, d, n):
+def variation_epsilon(m, d, n,jacob=True):
     """
     :param m: liste d'entiers des montees (normalise)
-    :param d: liste d'entiers des descentes (normalise
+    :param d: liste d'entiers des descentes (normalise)
     :param n: la longueur des listes
     :return: On renvoie le vecteur resultat et sa qualite. Si pas de resultat on renvoie un vecteur vide et une qualite
      = -1
     """
     qualite = -1
     eps = 0.01
-    resultat = penalisation(m, d, eps, n)
+    resultat = penalisation(m, d, eps, n,jacob=jacob)
     res_trouve = resultat.success
     vector = resultat.x
     if res_trouve:
+        print("Resultat epsilon")
         qualite = qualite_resultat(vector, m, d, n)
+    else :
+        print("Pas de resultat epsilon")
     return vector, qualite
 
 
@@ -455,7 +466,7 @@ def generation_vecteurs_euleriens_aleatoires(nbr_voyageurs, nbr_arrets):
 
 
 def comparaison_methodes_qualite_temps_vect_aleatoires():
-    liste_arrets = np.linspace(8, 10, 3)
+    liste_arrets = np.linspace(5, 12, 8)
     liste_arrets = list(map(int, liste_arrets))
     temps_eps = []
     qualite_eps = []
@@ -479,14 +490,19 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
 
             # On teste la methode eps
             time_start_eps = time.time()
-            vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets)
-            qualite_eps_temp.append(qual_eps)
+            vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets,jacob=True)
+            if qual_eps == -1 :
+                time_start_eps = time.time()
+                vect_eps, qual_eps = variation_epsilon(m, v, nbr_arrets, jacob=False)
+            if qual_eps != -1 :
+                qualite_eps_temp.append(qual_eps)
             temps_eps_temp.append(time.time() - time_start_eps)
 
             # On teste la methode scipy
             time_start_scipy = time.time()
             vect_scipy, qual_scipy = optimisation_scipy(m, v, nbr_arrets)
-            qualite_scipy_temp.append(qual_scipy)
+            if qualite_scipy != -1 :
+                qualite_scipy_temp.append(qual_scipy)
             temps_scipy_temp.append(time.time() - time_start_scipy)
 
         temps_eps.append(temps_eps_temp)
@@ -519,12 +535,12 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
     # Ajustement des labels et des positions des axes
     plt.xticks(range(0, len(liste_arrets) * 2, 2), liste_arrets)
     plt.xlabel('Nombre arrets')
-    plt.ylabel('Temps de traitement')
+    plt.ylabel('Temps de traitement (secondes)')
     plt.title('Boxplot pour le temps de traitement en fonction du nombre d arrets et de la methode')
     plt.grid(True)
     plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
                 plt.Line2D([0], [0], color='lightgreen', lw=4)],
-               ['Penalisation', 'Scipy'])
+               ['Penalisation - NM', 'Trust-Constr'])
 
     plt.show()
 
@@ -557,17 +573,17 @@ def comparaison_methodes_qualite_temps_vect_aleatoires():
     plt.grid(True)
     plt.legend([plt.Line2D([0], [0], color='lightblue', lw=4),
                 plt.Line2D([0], [0], color='lightgreen', lw=4)],
-               ['Penalisation', 'Scipy'])
+               ['Penalisation - NM', 'Trust-Constr'])
 
     plt.show()
 
 
-# Test 2, 3 : Comparaison (moindres carres puis entropie relative) matrices OD et matrices trouvees par les deux methodes.
+# Test 0, 2 : Comparaison (moindres carres puis entropie relative) matrices OD et matrices trouvees par les deux methodes.
 def comparaison_mc_entropie(matriceOD, name):
     matriceOD = normalisation_matrice(matriceOD)
     m, v = lagrange_to_euler(matriceOD)
     n = len(m)
-    dossier = "C:/Users/garan/Documents/Stage L3/Code/bus/resultats_minimisation/"
+    dossier = "C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/resultats_minimisation/"
 
     # Test sur le vecteur marginales croisees
     x0 = vecteur_initial(m, v, generation_matrice_numeros(n), n)
@@ -709,7 +725,7 @@ if __name__ == "__main__":
     test2 = False
     if test2:
         print("Resultats ligne A JOB 8h45-8h59" + "\n")
-        path_AJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_JOB.xlsx'
+        path_AJOB = 'C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LA_JOB.xlsx'
         sheet_AJOB = 'LAS2_trhor15=t_0845-0859'
         usecols_AJOB = 'C:Q'
         firstrow_AJOB = 7
@@ -717,7 +733,7 @@ if __name__ == "__main__":
         comparaison_mc_entropie(matrice_AJOB, name='matrice_AJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne A Samedi 8h45-8h59" + "\n")
-        path_ASam = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_SAMEDI.xlsx'
+        path_ASam = 'C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LA_SAMEDI.xlsx'
         sheet_ASam = 'LAS2_trhor15=t_0845-0859'
         usecols_ASam = 'C:Q'
         firstrow_ASam = 7
@@ -725,7 +741,7 @@ if __name__ == "__main__":
         comparaison_mc_entropie(matrice_ASam, name='matrice_ASam')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne B JOB 8h45-8h59" + " \n")
-        path_BJOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LB_JOB.xlsx'
+        path_BJOB = 'C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LB_JOB.xlsx'
         sheet_BJOB = 'LBS2_trhor15=t_0845-0859'
         usecols_BJOB = 'C:Q'
         firstrow_BJOB = 7
@@ -733,7 +749,7 @@ if __name__ == "__main__":
         comparaison_mc_entropie(matrice_BJOB, name='matrice_BJOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne C4 JOB 8h45-8h59" + " \n")
-        path_C4JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
+        path_C4JOB = 'C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LC4_JOB.xlsx'
         sheet_C4JOB = 'LC4S2_trhor15=t_0845-0859'
         usecols_C4JOB = 'C:AK'
         firstrow_C4JOB = 7
@@ -741,7 +757,7 @@ if __name__ == "__main__":
         comparaison_mc_entropie(matrice_C4JOB, name='matrice_C4JOB')
         print("-------------------------------------------------------------------------------------------------------")
         print("Resultats ligne C7 JOB 8h45-8h59" + " \n")
-        path_C7JOB = 'C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LC7_JOB.xlsx'
+        path_C7JOB = 'C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LC7_JOB.xlsx'
         sheet_C7JOB = 'LC7S1_trhor15=t_0845-0859'
         usecols_C7JOB = 'C:U'
         firstrow_C7JOB = 7

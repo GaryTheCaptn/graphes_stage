@@ -12,7 +12,7 @@ def extraction_donnees(path, sheet, usecols, first_row):
     return numpy_donnees, numpy_noms
 
 
-path = "C:/Users/garan/Documents/Stage L3/Code/bus/donnees/LA_JOB.xlsx"
+path = "C:/Users/garan/Documents/Ecole/L3/Stage L3/Code/bus/donnees/LA_JOB.xlsx"
 sheet = "LAS2_trhor15=t_0845-0859"
 usecols = 'C:Q'
 
